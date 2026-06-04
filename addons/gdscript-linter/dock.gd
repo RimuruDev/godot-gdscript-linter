@@ -5,34 +5,39 @@
 extends Control
 ## Displays analysis results with clickable navigation
 
-# Issue type display names mapped to check_ids
+# Issue type localization keys mapped to check_ids
 const ISSUE_TYPES := {
-	"all": "All Types",
-	"file-length": "File Length",
-	"long-function": "Long Function",
-	"long-line": "Long Line",
-	"todo-comment": "TODO/FIXME",
-	"print-statement": "Print Statement",
-	"empty-function": "Empty Function",
-	"magic-number": "Magic Number",
-	"commented-code": "Commented Code",
-	"missing-type-hint": "Missing Type Hint",
-	"missing-return-type": "Missing Return Type",
-	"too-many-params": "Too Many Params",
-	"deep-nesting": "Deep Nesting",
-	"high-complexity": "High Complexity",
-	"god-class": "God Class",
-	"naming-class": "Naming: Class",
-	"naming-function": "Naming: Function",
-	"naming-signal": "Naming: Signal",
-	"naming-const": "Naming: Constant",
-	"naming-enum": "Naming: Enum",
-	"unused-variable": "Unused Variable",
-	"unused-parameter": "Unused Parameter",
-	"ascii-violation": "ASCII Violation",
-	"strict-limit": "Strict Limit",
-	"sealed-violation": "Sealed Violation"
+	"all": "all_types",
+	"file-length": "file_length",
+	"long-function": "long_function",
+	"long-line": "long_line",
+	"todo-comment": "todo_fixme",
+	"print-statement": "print_statement",
+	"empty-function": "empty_function",
+	"magic-number": "magic_number",
+	"commented-code": "commented_code",
+	"missing-type-hint": "missing_type_hint",
+	"reflection-call": "reflection_call",
+	"missing-return-type": "missing_return_type",
+	"too-many-params": "too_many_params",
+	"deep-nesting": "deep_nesting",
+	"high-complexity": "high_complexity",
+	"god-class": "god_class",
+	"naming-class": "naming_class",
+	"naming-function": "naming_function",
+	"naming-signal": "naming_signal",
+	"naming-const": "naming_const",
+	"naming-enum": "naming_enum",
+	"unused-variable": "unused_variable",
+	"unused-parameter": "unused_parameter",
+	"ascii-violation": "ascii_violation",
+	"strict-limit": "strict_limit",
+	"sealed-violation": "sealed_violation"
 }
+
+const EXPORT_MENU_JSON := 1
+const EXPORT_MENU_HTML := 2
+const EXPORT_MENU_MD := 3
 
 # Preload scripts
 var CodeAnalyzerScript = preload("res://addons/gdscript-linter/analyzer/code-analyzer.gd")
@@ -40,6 +45,7 @@ var AnalysisConfigScript = preload("res://addons/gdscript-linter/analyzer/analys
 var IssueScript = preload("res://addons/gdscript-linter/analyzer/issue.gd")
 var SettingsCardBuilderScript = preload("res://addons/gdscript-linter/ui/settings-card-builder.gd")
 var SettingsManagerScript = preload("res://addons/gdscript-linter/ui/settings-manager.gd")
+var LocalizationScript = preload("res://addons/gdscript-linter/ui/localization.gd")
 
 # UI References
 var results_label: RichTextLabel
@@ -47,6 +53,7 @@ var scan_button: Button
 var export_button: Button
 var html_export_button: Button
 var md_export_button: Button
+var export_menu_button: MenuButton
 var severity_filter: OptionButton
 var type_filter: OptionButton
 var file_filter: LineEdit
@@ -138,6 +145,15 @@ func _ready() -> void:
 	_ready_complete = true
 
 
+func _t(key: String) -> String:
+	return LocalizationScript.t(key)
+
+
+func _issue_type_name(check_id: String) -> String:
+	var loc_key: String = ISSUE_TYPES.get(check_id, check_id)
+	return _t(loc_key)
+
+
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_THEME_CHANGED and _ready_complete:
 		GDLintThemeColors.refresh()
@@ -156,7 +172,21 @@ func _refresh_muted_hex() -> void:
 
 # Sets the initial placeholder text using theme-derived color
 func _set_initial_results_text() -> void:
-	results_label.text = "[center][color=%s]Click Scan to analyze codebase[/color][/center]" % _muted_hex
+	results_label.text = "[center][color=%s]%s[/color][/center]" % [_muted_hex, _t("initial_text")]
+
+
+func _apply_localized_static_ui() -> void:
+	scan_button.text = _t("scan")
+	scan_button.tooltip_text = _t("scan")
+	settings_button.tooltip_text = _t("settings")
+	file_filter.placeholder_text = _t("file_filter")
+	file_filter.tooltip_text = _t("file_filter")
+	export_menu_button.text = _t("export")
+	export_menu_button.tooltip_text = _t("export")
+	if _busy_label:
+		_busy_label.text = _t("scanning")
+	_setup_filters()
+	_refresh_export_menu()
 
 
 func _init_node_references() -> void:
@@ -172,12 +202,25 @@ func _init_node_references() -> void:
 
 	# Create MD export button programmatically (inserted after HTML export button)
 	md_export_button = Button.new()
-	md_export_button.text = "Export MD"
-	md_export_button.tooltip_text = "Export as Markdown"
+	md_export_button.text = _t("export_md")
+	md_export_button.tooltip_text = _t("export_md")
 	var toolbar := $VBox/Toolbar
 	var html_idx := html_export_button.get_index()
 	toolbar.add_child(md_export_button)
 	toolbar.move_child(md_export_button, html_idx + 1)
+
+	# Keep legacy export buttons for existing settings wiring, but expose one compact menu.
+	export_button.visible = false
+	html_export_button.visible = false
+	md_export_button.visible = false
+
+	export_menu_button = MenuButton.new()
+	export_menu_button.text = _t("export")
+	export_menu_button.tooltip_text = _t("export")
+	export_menu_button.custom_minimum_size = Vector2(82, 28)
+	export_menu_button.get_popup().id_pressed.connect(_on_export_menu_id_pressed)
+	toolbar.add_child(export_menu_button)
+	toolbar.move_child(export_menu_button, html_idx)
 
 	# Add internal content padding to results label
 	var results_style := StyleBoxFlat.new()
@@ -186,6 +229,7 @@ func _init_node_references() -> void:
 	results_label.add_theme_stylebox_override("normal", results_style)
 
 	# Toolbar buttons inherit editor theme styling - no overrides needed
+	_apply_localized_static_ui()
 
 
 func _validate_required_nodes() -> bool:
@@ -205,6 +249,9 @@ func _setup_background() -> void:
 
 
 func _init_config_and_settings_panel() -> void:
+	var editor_settings := EditorInterface.get_editor_settings()
+	if editor_settings.has_setting("code_quality/ui/language"):
+		LocalizationScript.set_language_mode(str(editor_settings.get_setting("code_quality/ui/language")))
 	current_config = AnalysisConfigScript.new()
 	var reset_icon = load("res://addons/gdscript-linter/icons/arrow-reset.svg")
 	var card_builder = SettingsCardBuilderScript.new(reset_icon)
@@ -246,22 +293,62 @@ func _connect_signals() -> void:
 
 func _setup_filters() -> void:
 	severity_filter.clear()
-	severity_filter.add_item("All Severities", 0)
-	severity_filter.add_item("Critical", 1)
-	severity_filter.add_item("Warnings", 2)
-	severity_filter.add_item("Info", 3)
+	severity_filter.add_item(_t("all_severities"), 0)
+	severity_filter.add_item(_t("critical"), 1)
+	severity_filter.add_item(_t("warnings"), 2)
+	severity_filter.add_item(_t("info"), 3)
 	_populate_type_filter()
 
 
 func _apply_initial_visibility() -> void:
-	export_button.visible = settings_manager.show_json_export
-	html_export_button.visible = settings_manager.show_html_export
-	md_export_button.visible = settings_manager.show_md_export
 	export_button.disabled = true
 	html_export_button.disabled = true
 	md_export_button.disabled = true
+	export_menu_button.disabled = true
+	_refresh_export_menu()
+	export_menu_button.disabled = true
 	settings_panel.visible = false
 	_restore_saved_filters()
+
+
+func _refresh_export_menu() -> void:
+	if not export_menu_button:
+		return
+
+	export_button.visible = false
+	html_export_button.visible = false
+	md_export_button.visible = false
+
+	var popup := export_menu_button.get_popup()
+	popup.clear()
+
+	var show_json := false
+	var show_html := true
+	var show_md := false
+	if settings_manager:
+		show_json = settings_manager.show_json_export
+		show_html = settings_manager.show_html_export
+		show_md = settings_manager.show_md_export
+
+	if show_json:
+		popup.add_item(_t("export_json"), EXPORT_MENU_JSON)
+	if show_html:
+		popup.add_item(_t("export_html"), EXPORT_MENU_HTML)
+	if show_md:
+		popup.add_item(_t("export_md"), EXPORT_MENU_MD)
+
+	export_menu_button.visible = popup.item_count > 0
+	export_menu_button.disabled = current_result == null
+
+
+func _on_export_menu_id_pressed(id: int) -> void:
+	match id:
+		EXPORT_MENU_JSON:
+			_on_export_pressed()
+		EXPORT_MENU_HTML:
+			_on_html_export_pressed()
+		EXPORT_MENU_MD:
+			_on_md_export_pressed()
 
 
 # Restores filter selections from settings if Remember Filters is enabled
@@ -332,7 +419,7 @@ func _setup_busy_overlay() -> void:
 
 	# "Scanning..." label (inherits font color from editor theme)
 	_busy_label = Label.new()
-	_busy_label.text = "Scanning codebase..."
+	_busy_label.text = _t("scanning")
 	_busy_label.add_theme_font_size_override("font_size", 14)
 	_busy_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(_busy_label)
@@ -405,7 +492,7 @@ func _setup_export_config_dialog() -> void:
 	_export_config_dialog = EditorFileDialog.new()
 	_export_config_dialog.file_mode = EditorFileDialog.FILE_MODE_SAVE_FILE
 	_export_config_dialog.access = EditorFileDialog.ACCESS_RESOURCES
-	_export_config_dialog.title = "Export GDLint Config"
+	_export_config_dialog.title = _t("export")
 	_export_config_dialog.add_filter("*.json", "JSON Config Files")
 	_export_config_dialog.current_file = "gdlint-custom.json"
 	_export_config_dialog.file_selected.connect(_on_export_config_file_selected)
@@ -427,7 +514,7 @@ func _setup_export_folder_dialog() -> void:
 	_export_folder_dialog = FileDialog.new()
 	_export_folder_dialog.file_mode = FileDialog.FILE_MODE_OPEN_DIR
 	_export_folder_dialog.access = FileDialog.ACCESS_FILESYSTEM
-	_export_folder_dialog.title = "Select Export Folder"
+	_export_folder_dialog.title = _t("export_folder")
 	_export_folder_dialog.dir_selected.connect(_on_export_folder_selected)
 	add_child(_export_folder_dialog)
 
@@ -460,7 +547,7 @@ func _setup_export_notification() -> void:
 	vbox.add_child(path_hbox)
 
 	_export_prefix_label = Label.new()
-	_export_prefix_label.text = "Exported:"
+	_export_prefix_label.text = _t("exported")
 	path_hbox.add_child(_export_prefix_label)
 
 	_export_path_label = Label.new()
@@ -475,30 +562,30 @@ func _setup_export_notification() -> void:
 	vbox.add_child(btn_hbox)
 
 	var open_folder_btn := Button.new()
-	open_folder_btn.text = "Open Folder"
+	open_folder_btn.text = _t("open_folder")
 	open_folder_btn.flat = true
-	open_folder_btn.tooltip_text = "Open containing folder in file explorer"
+	open_folder_btn.tooltip_text = _t("open_folder")
 	open_folder_btn.pressed.connect(_on_export_open_folder)
 	btn_hbox.add_child(open_folder_btn)
 
 	var open_file_btn := Button.new()
-	open_file_btn.text = "Open File"
+	open_file_btn.text = _t("open_file")
 	open_file_btn.flat = true
-	open_file_btn.tooltip_text = "Open the exported file"
+	open_file_btn.tooltip_text = _t("open_file")
 	open_file_btn.pressed.connect(_on_export_open_file)
 	btn_hbox.add_child(open_file_btn)
 
 	var copy_path_btn := Button.new()
-	copy_path_btn.text = "Copy Path"
+	copy_path_btn.text = _t("copy_path")
 	copy_path_btn.flat = true
-	copy_path_btn.tooltip_text = "Copy absolute file path to clipboard"
+	copy_path_btn.tooltip_text = _t("copy_path")
 	copy_path_btn.pressed.connect(_on_export_copy_path)
 	btn_hbox.add_child(copy_path_btn)
 
 	var copy_content_btn := Button.new()
-	copy_content_btn.text = "Copy Content"
+	copy_content_btn.text = _t("copy_content")
 	copy_content_btn.flat = true
-	copy_content_btn.tooltip_text = "Copy file content to clipboard"
+	copy_content_btn.tooltip_text = _t("copy_content")
 	copy_content_btn.pressed.connect(_on_export_copy_content)
 	btn_hbox.add_child(copy_content_btn)
 
@@ -510,7 +597,7 @@ func _setup_export_notification() -> void:
 	var dismiss_btn := Button.new()
 	dismiss_btn.icon = load("res://addons/gdscript-linter/icons/dismiss.svg")
 	dismiss_btn.flat = true
-	dismiss_btn.tooltip_text = "Dismiss"
+	dismiss_btn.tooltip_text = _t("dismiss")
 	dismiss_btn.custom_minimum_size = Vector2(24, 24)
 	dismiss_btn.pressed.connect(_on_export_notification_dismiss)
 	btn_hbox.add_child(dismiss_btn)
@@ -629,6 +716,18 @@ var _export_notification_was_visible: bool = false
 
 # Called when any setting changes - just track that checks changed, don't re-scan
 func _on_setting_changed(key: String, _value: Variant) -> void:
+	if key == "code_quality/ui/language":
+		_apply_localized_static_ui()
+		_rebuild_settings_panel()
+		if current_result:
+			_display_results()
+		else:
+			_set_initial_results_text()
+		return
+
+	if key.begins_with("code_quality/display/show_") and key.ends_with("_export"):
+		_refresh_export_menu()
+
 	if key.begins_with("check_") or key == "all_checks":
 		_checks_changed_while_settings_open = true
 
@@ -637,7 +736,7 @@ func _populate_type_filter(sev_filter: String = "all") -> void:
 	type_filter.clear()
 	var idx := 0
 
-	type_filter.add_item("All Types", idx)
+	type_filter.add_item(_t("all_types"), idx)
 	type_filter.set_item_metadata(idx, "all")
 	idx += 1
 
@@ -647,7 +746,7 @@ func _populate_type_filter(sev_filter: String = "all") -> void:
 		if check_id == "all":
 			continue
 		if sev_filter == "all" or check_id in available_types:
-			type_filter.add_item(ISSUE_TYPES[check_id], idx)
+			type_filter.add_item(_issue_type_name(check_id), idx)
 			type_filter.set_item_metadata(idx, check_id)
 			idx += 1
 
@@ -707,6 +806,7 @@ func _run_analysis() -> void:
 	export_button.disabled = false
 	html_export_button.disabled = false
 	md_export_button.disabled = false
+	_refresh_export_menu()
 
 	# Hide busy overlay when done
 	_hide_busy_overlay()
@@ -1249,18 +1349,21 @@ func _filter_issues(issues: Array) -> Array:
 
 
 func _build_report_header() -> String:
-	var bbcode := "[b]Code Quality Report[/b]\n"
-	bbcode += "Files: %d | Lines: %d | Time: %dms\n" % [
+	var bbcode := "[b]%s[/b]\n" % _t("report_title")
+	bbcode += "%s: %d | %s: %d | %s: %dms\n" % [
+		_t("files"),
 		current_result.files_analyzed,
+		_t("lines"),
 		current_result.total_lines,
+		_t("time"),
 		current_result.analysis_time_ms
 	]
 
 	var summary_parts: Array[String] = []
 	if settings_manager.show_total_issues:
-		summary_parts.append("Issues: %d" % current_result.issues.size())
+		summary_parts.append("%s: %d" % [_t("issues"), current_result.issues.size()])
 	if settings_manager.show_debt:
-		summary_parts.append("Debt: %d" % current_result.get_total_debt_score())
+		summary_parts.append("%s: %d" % [_t("debt"), current_result.get_total_debt_score()])
 	if summary_parts.size() > 0:
 		bbcode += " | ".join(summary_parts) + "\n"
 	bbcode += "\n"
@@ -1270,13 +1373,13 @@ func _build_report_header() -> String:
 func _build_active_filters_text(count: int) -> String:
 	var active: Array[String] = []
 	if current_severity_filter != "all":
-		active.append(current_severity_filter.capitalize())
+		active.append(_t(current_severity_filter if current_severity_filter != "warning" else "warnings"))
 	if current_type_filter != "all":
-		active.append(ISSUE_TYPES.get(current_type_filter, current_type_filter))
+		active.append(_issue_type_name(current_type_filter))
 	if current_file_filter != "":
 		active.append("\"%s\"" % current_file_filter)
 	if active.size() > 0:
-		return "[color=%s]Filters: %s (%d matches)[/color]\n\n" % [_muted_hex, ", ".join(active), count]
+		return "[color=%s]%s: %s (%d %s)[/color]\n\n" % [_muted_hex, _t("filters"), ", ".join(active), count, _t("matches")]
 	return ""
 
 
@@ -1327,12 +1430,12 @@ func _display_results() -> void:
 		"info": grouped.info
 	}
 
-	bbcode += _format_severity_section(grouped.critical, "CRITICAL", "🔴", "#ff6b6b", "critical")
-	bbcode += _format_severity_section(grouped.warning, "WARNINGS", "🟡", "#ffd93d", "warning")
-	bbcode += _format_severity_section(grouped.info, "INFO", "🔵", "#6bcb77", "info")
+	bbcode += _format_severity_section(grouped.critical, _t("critical").to_upper(), "🔴", "#ff6b6b", "critical")
+	bbcode += _format_severity_section(grouped.warning, _t("warnings").to_upper(), "🟡", "#ffd93d", "warning")
+	bbcode += _format_severity_section(grouped.info, _t("info").to_upper(), "🔵", "#6bcb77", "info")
 
 	if filtered.size() == 0:
-		bbcode += "[color=%s]No issues matching current filters[/color]" % _muted_hex
+		bbcode += "[color=%s]%s[/color]" % [_muted_hex, _t("no_matching")]
 
 	if settings_manager.show_ignored_issues:
 		bbcode += _format_ignored_section()
@@ -1361,7 +1464,7 @@ func _format_issues_by_type(issues: Array, color: String, severity_key: String) 
 	var is_first_type := true
 	for check_id in type_keys:
 		var type_issues: Array = by_type[check_id]
-		var type_name: String = ISSUE_TYPES.get(check_id, check_id)
+		var type_name: String = _issue_type_name(check_id)
 
 		if not is_first_type:
 			bbcode += "\n"
@@ -1429,7 +1532,7 @@ func _format_ignored_section() -> String:
 			by_type[check_id] = []
 		by_type[check_id].append(issue)
 
-	var bbcode := "\n[color=#666666][b]── Ignored (%d) ──[/b][/color]\n" % ignored.size()
+	var bbcode := "\n[color=#666666][b]── %s (%d) ──[/b][/color]\n" % [_t("ignored"), ignored.size()]
 
 	# Sort by count descending
 	var type_keys := by_type.keys()
@@ -1437,7 +1540,7 @@ func _format_ignored_section() -> String:
 
 	for check_id in type_keys:
 		var type_issues: Array = by_type[check_id]
-		var type_name: String = ISSUE_TYPES.get(check_id, check_id)
+		var type_name: String = _issue_type_name(check_id)
 
 		# Show type with all references on one line (or multiple if many)
 		if type_issues.size() <= 3:

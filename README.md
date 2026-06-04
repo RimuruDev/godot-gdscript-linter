@@ -1,219 +1,86 @@
-# GDScript Linter - Static Code Quality Analyzer
-
-![Version](https://img.shields.io/badge/version-3.2.1-blue.svg)
-![Godot](https://img.shields.io/badge/Godot-4.0%2B-blue.svg)
-
-Static code analyzer for GDScript that identifies code quality issues, technical debt, and best practice violations. Features clickable navigation to issues, configurable thresholds, and CI/CD support via CLI.
-
-Runs in seconds with no external dependencies. Can help reduce token usage on large projects.
+# GDScript Linter для AbyssMoth
 
 <p align="center">
-  <img src="screenshots/gdscript-linter.png" width="700" alt="GDScript Linter Editor Dock">
+  <a href="README.md"><img alt="Русский" src="https://img.shields.io/badge/README-Русский-blue"></a>
+  <a href="README_EN.md"><img alt="English" src="https://img.shields.io/badge/README-English-gray"></a>
 </p>
 
-## Features
+![Version](https://img.shields.io/badge/version-3.3.0--abyssmoth.1-blue.svg)
+![Godot](https://img.shields.io/badge/Godot-4.x-blue.svg)
 
-### Code Quality Checks
+Это локальный студийный форк `graydwarf/godot-gdscript-linter`, адаптированный под рабочий стиль AbyssMoth/RimuruDev: меньше магии через строки, больше типизированных связей, русская панель в редакторе и компактный UI для нижней панели Godot.
 
-| Check | Severity | Description |
-|-------|----------|-------------|
-| **File Length** | Warning/Critical | Files exceeding soft/hard line limits |
-| **Function Length** | Warning/Critical | Functions that are too long |
-| **Cyclomatic Complexity** | Warning/Critical | Functions with too many decision paths |
-| **Parameter Count** | Warning | Functions with too many parameters |
-| **Nesting Depth** | Warning | Deeply nested code blocks |
-| **TODO/FIXME Comments** | Info/Warning | Tracks technical debt markers |
-| **Print Statements** | Warning | Debug prints left in code |
-| **Empty Functions** | Info | Functions with no implementation |
-| **Magic Numbers** | Info | Hardcoded numbers that should be constants |
-| **Commented-Out Code** | Info | Dead code left in comments |
-| **Missing Type Hints** | Info | Variables and functions without type annotations |
-| **God Classes** | Warning | Classes with too many public functions or signals |
-| **Naming Conventions** | Info/Warning | Non-standard naming (snake_case, PascalCase, etc.) |
-| **Unused Variables** | Warning | Local variables declared but never used |
-| **Unused Parameters** | Info | Function parameters declared but never used |
-| **ASCII Enforcement** | Warning | Non-ASCII characters in `#@ascii_only` files |
-| **Strict Limits** | Critical | Values exceeding `gdlint:strict` overrides |
-| **Sealed Classes** | Critical | Extending a `#@Sealed` class |
+## Что изменено в форке
 
-### Editor Integration
+- Добавлена проверка `reflection-call` для динамических Object API: `call()`, `call_deferred()`, `has_method()`, `has_signal()`, `emit_signal()`, `set_deferred()`, `get_indexed()`, `set_indexed()`.
+- `Dictionary.get()` и обычный `get()/set()` не входят в дефолтную проверку, чтобы не шуметь на миграциях сейвов и JSON-подобных данных.
+- Панель стала компактнее: JSON/HTML/Markdown экспорт спрятан в одно меню `Экспорт`.
+- Настройки Claude Code и CLI убраны из студийного UI форка.
+- Добавлена локализация интерфейса: `Auto`, `Русский`, `English`.
+- `reflection-call` отображается в фильтре типов, отчёте и HTML-экспорте.
+- CLI теперь умеет анализировать одиночный `.gd` файл, а не только директории.
 
-- Bottom panel dock with full analysis results
-- Clickable file:line links to navigate directly to issues
-- Filter by severity (Critical/Warning/Info)
-- Filter by issue type (linked to severity selection)
-- Filter by filename
-- Configurable thresholds via settings panel
-- Real-time debt score calculation
-- Export to JSON or interactive HTML report
+## Использование
 
-### Reports
+1. Скопируйте `addons/gdscript-linter` в проект Godot.
+2. Включите плагин: `Проект > Настройки проекта > Плагины`.
+3. Откройте нижнюю вкладку `Code Quality`.
+4. Нажмите `Сканировать`.
+5. В настройках выберите язык `Auto`, `Русский` или `English`.
 
-- Optionally export to .md file (useful for non-claude LLMs and task management systems)
-- Optionally export to .json file
-- Optionally export to self-contained dark-themed HTML file
-  - Interactive filtering by severity, type, and filename
-  - Linked filters: type dropdown updates based on selected severity
-  - Summary stats with issue counts and debt score
+Если редактор Godot уже на русском, режим `Auto` сам выберет русский интерфейс.
 
-<p align="center">
-  <img src="screenshots/gdscript-linter-html.png" width="700" alt="GDScript Linter HTML Report">
-</p>
+## Основные проверки
 
-### Claude Code Integration
+| Проверка | Уровень | Что ищет |
+|---|---:|---|
+| Длина файла | Warning/Critical | Файлы длиннее настроенных лимитов |
+| Длина функции | Warning/Critical | Слишком длинные функции |
+| Сложность | Warning/Critical | Высокую цикломатическую сложность |
+| Количество параметров | Warning | Слишком много параметров функции |
+| Вложенность | Warning | Слишком глубокие блоки |
+| TODO/FIXME | Info/Warning | Маркеры техдолга |
+| Print-вызовы | Warning | Оставленные debug print |
+| Магические числа | Info | Числа без именованных констант |
+| Закомментированный код | Info | Мёртвый код в комментариях |
+| Пропущенные типы | Info | Переменные без type hints |
+| Рефлексия | Warning | Динамические вызовы `call()`/`has_method()` и похожие API |
+| God Class | Warning | Классы со слишком большим числом членов |
+| Naming | Info/Warning | Нарушения соглашений имён |
+| Unused | Info/Warning | Неиспользуемые переменные и параметры |
+| ASCII/Strict/Sealed | Warning/Critical | Дополнительные защитные правила |
 
-Launch [Claude Code](https://claude.ai/code) directly from scan results to get AI-assisted fixes:
+## Игнорирование правил
 
-- Enable in Settings > Claude Code Integration
-- Issue context (file, line, type, message) is passed automatically
-- Add custom instructions to customize the AI prompt
-- Requires [claude-code CLI](https://github.com/anthropics/claude-code) installed
-
-**Interaction Options:**
-
-| Action | Behavior |
-|--------|----------|
-| **Click** | Launch Claude Code in plan mode (safe - reviews before making changes) |
-| **Shift+Click** | Launch Claude Code in immediate mode (fixes without planning) |
-| **Right-click** | Context menu with "Plan Fix" and "Fix Immediately" options |
-
-Hover over any Claude icon to see a tooltip with these options.
-
-### CLI Support
-
-Run analysis from command line for CI/CD integration:
-
-```bash
-# Analyze current project
-godot --headless --script res://addons/gdscript-linter/analyzer/analyze-cli.gd
-
-# Analyze external project
-godot --headless --path /path/to/gdscript-linter --script res://addons/gdscript-linter/analyzer/analyze-cli.gd -- --path "C:/my/project"
-
-# Output formats
-godot --headless --script res://addons/gdscript-linter/analyzer/analyze-cli.gd -- --clickable  # Godot Output panel format
-godot --headless --script res://addons/gdscript-linter/analyzer/analyze-cli.gd -- --json       # JSON format
-godot --headless --script res://addons/gdscript-linter/analyzer/analyze-cli.gd -- --html -o report.html  # HTML report
-
-# Audit mode - bypass all ignore directives
-godot --headless --script res://addons/gdscript-linter/analyzer/analyze-cli.gd -- --no-ignore
-```
-
-**Exit Codes:**
-- `0` - No issues found
-- `1` - Warnings only
-- `2` - Critical issues found
-
-## Installation
-
-### From Asset Library
-
-1. Open Godot Editor
-2. Go to AssetLib tab
-3. Search for "GDScript Linter"
-4. Download and install
-5. Enable plugin: Project > Project Settings > Plugins > GDScript Linter > Enable
-
-### Manual Installation
-
-1. Download or clone this repository
-2. Copy the `addons/gdscript-linter` folder to your project's `addons/` directory
-3. Enable plugin: Project > Project Settings > Plugins > GDScript Linter > Enable
-
-## Usage
-
-### Editor Dock
-
-1. After enabling the plugin, find "Code Quality" in the bottom panel
-2. Click "Scan" to analyze your codebase
-3. Click any issue to navigate to the source location
-4. Use filters to focus on specific severity levels or issue types
-5. Click the settings icon to adjust thresholds
-
-### Ignore Comments
-
-Suppress warnings for intentional code patterns using inline comments:
-
-| Directive                      | Scope           |
-|--------------------------------|-----------------|
-| `gdlint:ignore-file`             | Entire file     |
-| `gdlint:ignore-below`            | Line to EOF     |
-| `gdlint:ignore-function`         | Entire function |
-| `gdlint:ignore-block-start/end`  | Code block      |
-| `gdlint:ignore-next-line`        | Next line       |
-| `gdlint:ignore-line`             | Same line       |
-
-All directives support optional check IDs: `# gdlint:ignore-line:magic-number,print-statement`
-
-#### Pinned Exceptions
-
-Track technical debt regression by pinning numeric values:
+Для осознанных исключений используйте директивы:
 
 ```gdscript
-# gdlint:ignore-function:long-function=35
-func my_complex_function():
-    # Function is 35 lines - pinned at this value
+# gdlint:ignore-line:reflection-call
+target.call("method_name")
 ```
 
-| Scenario | Result |
-|----------|--------|
-| Actual matches pinned (35 = 35) | Silently ignored |
-| Actual exceeds pinned (35 → 40) | ⚠️ Warning: "exceeded pinned limit" |
-| Actual improved (35 → 32, still > 30) | ℹ️ Info: "consider tightening" |
-| Actual now within limit (35 → 25) | ℹ️ Info: "pinned ignore is now unnecessary" |
+Поддерживаются:
 
-See **[IGNORE_RULES.md](addons/gdscript-linter/docs/IGNORE_RULES.md)** for full syntax reference and examples.
+| Директива | Область |
+|---|---|
+| `gdlint:ignore-file` | весь файл |
+| `gdlint:ignore-below` | от строки до конца файла |
+| `gdlint:ignore-function` | вся функция |
+| `gdlint:ignore-block-start/end` | блок кода |
+| `gdlint:ignore-next-line` | следующая строка |
+| `gdlint:ignore-line` | текущая строка |
 
-### Defensive Attributes
-
-Three attributes for enforcing stricter contracts on critical code.
-
-#### `#@ascii_only` — ASCII Enforcement
-
-Place in the first 10 lines of a file to flag non-ASCII characters (including in strings and comments) as warnings.
+Для длинных конфигов можно использовать pinned exceptions:
 
 ```gdscript
-#@ascii_only
-extends Node
-
-var name := "hello"   # OK
-var label := "héllo"  # WARNING: ascii-violation
+# gdlint:ignore-file:file-length=340
 ```
 
-Enable project-wide with `ascii_only_project_wide = true` in `.gdlint.cfg`. Individual files can opt out with `# gdlint:ignore-file:ascii-violation`.
+Так линтер не будет ругаться, пока файл не станет длиннее зафиксированного значения.
 
-#### `# gdlint:strict` — Per-Scope Tighter Limits
+## Конфиг
 
-Override global thresholds with stricter values. Issues fire at CRITICAL severity and suppress the normal threshold check.
-
-```gdscript
-# File-scoped (first 10 lines):
-# gdlint:strict-file:file-length=200
-
-# Function-scoped (above func):
-# gdlint:strict-function:long-function=25
-func critical_function():
-    pass
-```
-
-Supported rules: `long-function`, `file-length`, `high-complexity`, `deep-nesting`, `too-many-params`, `god-class-functions`, `god-class-signals`
-
-#### `#@Sealed` — Prevent Class Inheritance
-
-Mark a class as sealed to prevent other files from extending it. Requires `class_name` on the next line and directory-wide analysis.
-
-```gdscript
-#@Sealed
-class_name CoreAPI
-extends RefCounted
-# Other files extending CoreAPI will get a CRITICAL sealed-violation
-```
-
-See **[IGNORE_RULES.md](addons/gdscript-linter/docs/IGNORE_RULES.md)** for full details on all defensive attributes.
-
-### Project Configuration
-
-Create a `.gdlint.cfg` file in your project root to customize settings:
+Панель автоматически синхронизирует настройки в `gdlint.json`. Также можно использовать `.gdlint.cfg`:
 
 ```ini
 [limits]
@@ -225,7 +92,6 @@ max_parameters = 4
 max_nesting = 3
 cyclomatic_warning = 10
 cyclomatic_critical = 15
-ascii_only_project_wide = false
 
 [checks]
 file_length = true
@@ -239,82 +105,19 @@ empty_functions = true
 magic_numbers = true
 commented_code = true
 missing_types = true
+reflection_calls = true
 god_class = true
 naming_conventions = true
 unused_variables = true
 unused_parameters = true
-ignore_underscore_prefix = true
 ascii_only = true
-sealed_classes = true
+strict_limits = true
+sealed = true
 
 [exclude]
 paths = addons/, .godot/, tests/mocks/
 ```
 
-## CI/CD Integration
+## Лицензия
 
-### GitHub Actions
-
-```yaml
-name: Code Quality
-
-on: [push, pull_request]
-
-jobs:
-  analyze:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Download Godot
-        run: |
-          wget -q https://github.com/godotengine/godot/releases/download/4.5-stable/Godot_v4.5-stable_linux.x86_64.zip
-          unzip -q Godot_v4.5-stable_linux.x86_64.zip
-          chmod +x Godot_v4.5-stable_linux.x86_64
-
-      - name: Run Code Analysis
-        run: |
-          ./Godot_v4.5-stable_linux.x86_64 --headless --path . --script res://addons/gdscript-linter/analyzer/analyze-cli.gd -- --clickable
-```
-
-## Default Thresholds
-
-| Setting | Soft/Warning | Hard/Critical |
-|---------|--------------|---------------|
-| File lines | 200 | 300 |
-| Function lines | 30 | 60 |
-| Cyclomatic complexity | 10 | 15 |
-| Max parameters | 4 | - |
-| Max nesting depth | 3 | - |
-| God class functions | 20 | - |
-| God class signals | 10 | - |
-
-<p align="center">
-  <img src="screenshots/gdscript-linter-settings.png" width="500" alt="GDScript Linter Settings Panel">
-</p>
-
-## Allowed Magic Numbers
-
-These numbers are not flagged as they are commonly self-explanatory:
-`0, 1, -1, 2, 0.0, 1.0, 0.5, 2.0, -1.0, 10, 60, 90, 100, 180, 255, 360`
-
-## Requirements
-
-- Godot 4.0+
-- GDScript only (no C# support)
-
-## License
-
-MIT License - see [LICENSE](LICENSE) file for details.
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit issues and pull requests.
-
-## Roadmap
-
-Nothing planned. Waiting for feedback...
-
----
-
-*This project was built with the assistance of [Claude Code](https://claude.ai/code), an AI coding assistant by Anthropic.*
+Форк сохраняет MIT-лицензию оригинального проекта. Локальные изменения поддерживаются для студии AbyssMoth/RimuruDev.

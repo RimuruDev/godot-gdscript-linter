@@ -3,6 +3,8 @@
 class_name GDLintStyleChecker
 extends RefCounted
 
+const Loc = preload("res://addons/gdscript-linter/ui/localization.gd")
+
 var config
 
 
@@ -21,6 +23,7 @@ func check_line(line: String, trimmed: String, line_num: int, file_result) -> Ar
 	_append_issue(issues, _check_magic_numbers(trimmed, line_num))
 	_append_issue(issues, _check_commented_code(trimmed, line_num))
 	_append_issue(issues, _check_type_hints(trimmed, line_num))
+	_append_issue(issues, _check_reflection_calls(trimmed, line_num))
 
 	return issues
 
@@ -71,6 +74,12 @@ func _check_type_hints(trimmed: String, line_num: int) -> Variant:
 	if not config.check_missing_types:
 		return null
 	return check_variable_type_hints(trimmed, line_num)
+
+
+func _check_reflection_calls(trimmed: String, line_num: int) -> Variant:
+	if not config.check_reflection_calls:
+		return null
+	return check_reflection_calls(trimmed, line_num)
 
 
 func _track_metadata(trimmed: String, file_result) -> void:
@@ -168,6 +177,23 @@ func check_variable_type_hints(line: String, line_num: int) -> Variant:
 
 
 # Returns issue dictionary or null
+func check_reflection_calls(line: String, line_num: int) -> Variant:
+	if line.begins_with("#"):
+		return null
+
+	var code := _strip_string_literals(line)
+	for method_name in config.reflection_call_patterns:
+		if _contains_function_call(code, method_name):
+			return {
+				"line": line_num,
+				"severity": "warning",
+				"check_id": "reflection-call",
+				"message": Loc.t("reflection_message") % method_name
+			}
+	return null
+
+
+# Returns issue dictionary or null
 func check_todo_comments(trimmed: String, line_num: int) -> Variant:
 	for pattern in config.todo_patterns:
 		if pattern in trimmed:
@@ -202,3 +228,74 @@ func check_print_statements(trimmed: String, line_num: int) -> Variant:
 					"message": "Debug print statement: %s" % trimmed.substr(0, mini(60, trimmed.length()))
 				}
 	return null
+
+
+func _strip_string_literals(line: String) -> String:
+	var result := ""
+	var in_string := false
+	var quote := ""
+	var escaped := false
+
+	for i in range(line.length()):
+		var ch := line[i]
+
+		if in_string:
+			if escaped:
+				escaped = false
+			elif ch == "\\":
+				escaped = true
+			elif ch == quote:
+				in_string = false
+				quote = ""
+			result += " "
+			continue
+
+		if ch == "\"" or ch == "'":
+			in_string = true
+			quote = ch
+			result += " "
+			continue
+
+		result += ch
+
+	return result
+
+
+func _contains_function_call(code: String, method_name: String) -> bool:
+	var search_from := 0
+	while search_from < code.length():
+		var pos := code.find(method_name, search_from)
+		if pos < 0:
+			return false
+
+		if _is_word_boundary_before(code, pos) and _has_call_parenthesis_after(code, pos + method_name.length()):
+			if not _is_function_declaration(code, method_name):
+				return true
+
+		search_from = pos + method_name.length()
+
+	return false
+
+
+func _is_word_boundary_before(code: String, pos: int) -> bool:
+	if pos <= 0:
+		return true
+
+	var prev := code[pos - 1]
+	return not _is_identifier_char(prev)
+
+
+func _has_call_parenthesis_after(code: String, pos: int) -> bool:
+	var i := pos
+	while i < code.length() and (code[i] == " " or code[i] == "\t"):
+		i += 1
+
+	return i < code.length() and code[i] == "("
+
+
+func _is_function_declaration(code: String, method_name: String) -> bool:
+	return code.strip_edges().begins_with("func %s" % method_name)
+
+
+func _is_identifier_char(ch: String) -> bool:
+	return (ch >= "a" and ch <= "z") or (ch >= "A" and ch <= "Z") or (ch >= "0" and ch <= "9") or ch == "_"

@@ -29,6 +29,7 @@ extends Resource
 @export var check_magic_numbers: bool = true
 @export var check_commented_code: bool = true
 @export var check_missing_types: bool = true
+@export var check_reflection_calls: bool = true
 @export var check_cyclomatic_complexity: bool = true
 @export var check_god_class: bool = true
 @export var check_naming_conventions: bool = true
@@ -69,6 +70,12 @@ var todo_patterns: Array[String] = ["TODO", "FIXME", "HACK", "XXX", "BUG", "TEMP
 # Patterns for print detection (whitelist DebugLogger)
 var print_patterns: Array[String] = ["print(", "print_debug(", "prints(", "printt(", "printraw("]  # gdlint:ignore-line:print-statement
 var print_whitelist: Array[String] = ["DebugLogger"]
+
+# Dynamic Object APIs that hide typed dependencies and break static tooling.
+var reflection_call_patterns: Array[String] = [
+	"call", "call_deferred", "has_method", "set_deferred", "emit_signal",
+	"has_signal", "get_indexed", "set_indexed"
+]
 
 # Allowed magic numbers (won't be flagged)
 # gdlint:ignore-next-line:magic-number
@@ -154,6 +161,7 @@ func _apply_checks_value(key: String, value: String) -> void:
 		"magic_numbers": check_magic_numbers = enabled
 		"commented_code": check_commented_code = enabled
 		"missing_types": check_missing_types = enabled
+		"reflection_calls": check_reflection_calls = enabled
 		"god_class": check_god_class = enabled
 		"long_lines": check_long_lines = enabled
 		"naming_conventions": check_naming_conventions = enabled
@@ -216,6 +224,7 @@ func save_to_json(path: String) -> bool:
 			"magic_numbers": check_magic_numbers,
 			"commented_code": check_commented_code,
 			"missing_types": check_missing_types,
+			"reflection_calls": check_reflection_calls,
 			"cyclomatic_complexity": check_cyclomatic_complexity,
 			"god_class": check_god_class,
 			"naming_conventions": check_naming_conventions,
@@ -305,6 +314,7 @@ func load_from_json(path: String) -> bool:
 		if checks.has("magic_numbers"): check_magic_numbers = bool(checks.magic_numbers)
 		if checks.has("commented_code"): check_commented_code = bool(checks.commented_code)
 		if checks.has("missing_types"): check_missing_types = bool(checks.missing_types)
+		if checks.has("reflection_calls"): check_reflection_calls = bool(checks.reflection_calls)
 		if checks.has("cyclomatic_complexity"): check_cyclomatic_complexity = bool(checks.cyclomatic_complexity)
 		if checks.has("god_class"): check_god_class = bool(checks.god_class)
 		if checks.has("naming_conventions"): check_naming_conventions = bool(checks.naming_conventions)
