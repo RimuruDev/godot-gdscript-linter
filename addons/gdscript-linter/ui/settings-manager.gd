@@ -55,6 +55,7 @@ var export_folder_path: String = ""  # Empty = res:// (project root)
 # Settings state - Scanning
 var respect_gdignore: bool = true
 var scan_addons: bool = false
+var scan_target_path: String = "res://"
 var remember_filter_selections: bool = false
 
 # Persisted filter selections (only used when remember_filter_selections is true)
@@ -136,6 +137,8 @@ func load_settings() -> void:
 	config.respect_gdignore = respect_gdignore
 	scan_addons = _get_setting(editor_settings, "code_quality/scanning/scan_addons", false)
 	config.scan_addons = scan_addons
+	scan_target_path = _normalize_scan_target_path(_get_setting(editor_settings, "code_quality/scanning/scan_target_path", "res://"))
+	config.scan_target_path = scan_target_path
 	remember_filter_selections = _get_setting(editor_settings, "code_quality/scanning/remember_filters", false)
 
 	# Load saved filter selections
@@ -282,6 +285,7 @@ func _apply_to_ui() -> void:
 		"claude_command_edit": func(): return claude_code_command,
 		"claude_instructions_edit": func(): return claude_custom_instructions,
 		"export_folder_edit": func(): return export_folder_path,
+		"scan_path_edit": func(): return scan_target_path,
 	}
 
 	for control_key in text_mappings:
@@ -327,6 +331,10 @@ func connect_controls(export_btn: Button, html_export_btn: Button, md_export_btn
 		controls.respect_gdignore_check.toggled.connect(_on_respect_gdignore_toggled)
 	if controls.has("scan_addons_check"):
 		controls.scan_addons_check.toggled.connect(_on_scan_addons_toggled)
+	if controls.has("scan_path_edit"):
+		controls.scan_path_edit.text_changed.connect(_on_scan_path_changed)
+	if controls.has("scan_path_reset_btn"):
+		controls.scan_path_reset_btn.pressed.connect(_on_scan_path_reset_pressed)
 	if controls.has("remember_filters_check"):
 		controls.remember_filters_check.toggled.connect(_on_remember_filters_toggled)
 
@@ -382,7 +390,8 @@ func _is_analysis_setting(key: String) -> bool:
 	return (key.begins_with("code_quality/limits/") or
 			key.begins_with("code_quality/checks/") or
 			key.begins_with("code_quality/scanning/respect_gdignore") or
-			key.begins_with("code_quality/scanning/scan_addons"))
+			key.begins_with("code_quality/scanning/scan_addons") or
+			key.begins_with("code_quality/scanning/scan_target_path"))
 
 
 # Sync current config state to gdlint.json in project root
@@ -487,6 +496,35 @@ func _on_scan_addons_toggled(pressed: bool) -> void:
 	scan_addons = pressed
 	config.scan_addons = pressed
 	save_setting("code_quality/scanning/scan_addons", pressed)
+
+
+func _on_scan_path_changed(new_text: String) -> void:
+	scan_target_path = _normalize_scan_target_path(new_text)
+	config.scan_target_path = scan_target_path
+	save_setting("code_quality/scanning/scan_target_path", scan_target_path)
+
+
+func _on_scan_path_reset_pressed() -> void:
+	scan_target_path = "res://"
+	config.scan_target_path = scan_target_path
+	if controls.has("scan_path_edit"):
+		controls.scan_path_edit.text = scan_target_path
+	save_setting("code_quality/scanning/scan_target_path", scan_target_path)
+
+
+func get_scan_target_path() -> String:
+	return _normalize_scan_target_path(scan_target_path)
+
+
+func _normalize_scan_target_path(path: Variant) -> String:
+	var normalized := str(path).strip_edges()
+	if normalized.is_empty() or normalized == "res:":
+		return "res://"
+	if normalized.begins_with("addons/"):
+		return "res://" + normalized
+	if normalized.ends_with("/") and normalized != "res://":
+		normalized = normalized.trim_suffix("/")
+	return normalized
 
 
 func _on_remember_filters_toggled(pressed: bool) -> void:

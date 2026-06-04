@@ -5,7 +5,7 @@
   <a href="README_EN.md"><img alt="English" src="https://img.shields.io/badge/README-English-gray"></a>
 </p>
 
-![Version](https://img.shields.io/badge/version-3.3.0--abyssmoth.1-blue.svg)
+![Version](https://img.shields.io/badge/version-3.3.0--abyssmoth.2-blue.svg)
 ![Godot](https://img.shields.io/badge/Godot-4.x-blue.svg)
 
 Это локальный студийный форк `graydwarf/godot-gdscript-linter`, адаптированный под рабочий стиль AbyssMoth/RimuruDev: меньше магии через строки, больше типизированных связей, русская панель в редакторе и компактный UI для нижней панели Godot.
@@ -19,6 +19,8 @@
 - Добавлена локализация интерфейса: `Auto`, `Русский`, `English`.
 - `reflection-call` отображается в фильтре типов, отчёте и HTML-экспорте.
 - CLI теперь умеет анализировать одиночный `.gd` файл, а не только директории.
+- Добавлен путь анализа: можно сканировать `res://addons/my_addon` без полного прохода по `addons/`.
+- Исправлены ложные срабатывания `unused-variable`/`unused-parameter` для property `get/set` и generic-типов с запятыми.
 
 ## Использование
 

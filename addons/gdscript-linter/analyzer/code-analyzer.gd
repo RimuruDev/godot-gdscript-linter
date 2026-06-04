@@ -9,7 +9,7 @@ const AnalysisResultClass = preload("res://addons/gdscript-linter/analyzer/analy
 const FileResultClass = preload("res://addons/gdscript-linter/analyzer/file-result.gd")
 const IssueClass = preload("res://addons/gdscript-linter/analyzer/issue.gd")
 
-var config
+var config: GDLintConfig
 var result
 var _start_time: int
 var _ignore_handler: GDLintIgnoreHandler
@@ -38,13 +38,15 @@ func _init(p_config = null) -> void:
 
 
 func analyze_directory(path: String):
+	var target_path := _normalize_target_path(path)
+	_set_config_scan_target(target_path)
 	result = AnalysisResultClass.new()
 	_start_time = Time.get_ticks_msec()
 	_sealed_classes.clear()
 
 	if config.check_sealed:
 		# Two-pass: collect files, scan for sealed, then analyze
-		var gd_files := _collect_gd_files(path)
+		var gd_files := _collect_gd_files(target_path)
 		_scan_for_sealed_classes(gd_files)
 
 		for file_path in gd_files:
@@ -53,26 +55,44 @@ func analyze_directory(path: String):
 				result.add_file_result(file_result)
 	else:
 		# No sealed checking — single-pass (original behavior)
-		_scan_directory(path)
+		_scan_directory(target_path)
 
 	result.analysis_time_ms = Time.get_ticks_msec() - _start_time
 	return result
 
 
 func analyze_path(path: String):
-	if not path.ends_with(".gd"):
-		return analyze_directory(path)
+	var target_path := _normalize_target_path(path)
+	if not target_path.ends_with(".gd"):
+		return analyze_directory(target_path)
 
+	_set_config_scan_target(target_path)
 	result = AnalysisResultClass.new()
 	_start_time = Time.get_ticks_msec()
 	_sealed_classes.clear()
 
-	var file_result = analyze_file(path)
+	var file_result = analyze_file(target_path)
 	if file_result:
 		result.add_file_result(file_result)
 
 	result.analysis_time_ms = Time.get_ticks_msec() - _start_time
 	return result
+
+
+func _normalize_target_path(path: String) -> String:
+	var normalized := path.strip_edges()
+	if normalized.is_empty() or normalized == "res:":
+		return "res://"
+	if normalized.begins_with("addons/"):
+		return "res://" + normalized
+	if normalized.ends_with("/") and normalized != "res://":
+		normalized = normalized.trim_suffix("/")
+	return normalized
+
+
+func _set_config_scan_target(path: String) -> void:
+	if config != null:
+		config.scan_target_path = path
 
 
 func analyze_file(file_path: String):

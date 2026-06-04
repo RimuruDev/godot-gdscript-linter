@@ -100,7 +100,8 @@ Example `gdlint.json`:
 	},
 	"scanning": {
 		"respect_gdignore": true,
-		"scan_addons": false
+		"scan_addons": false,
+		"scan_target_path": "res://"
 	},
 	"exclude": {
 		"paths": ["addons/", ".godot/", "tests/mocks/"]

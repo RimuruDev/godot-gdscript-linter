@@ -52,7 +52,7 @@ func _collect_declarations(lines: Array) -> void:
 
 		# Check for variable declarations
 		if config.check_unused_variables:
-			_extract_variable_declaration(trimmed, line_num)
+			_extract_variable_declaration(lines, i, trimmed, line_num)
 			_extract_for_loop_variable(trimmed, line_num)
 
 
@@ -73,15 +73,17 @@ func _extract_parameters(line: String, line_num: int, func_name: String) -> void
 		return
 
 	var params_start := line.find("(")
-	var params_end := line.find(")")
-	if params_start < 0 or params_end < 0 or params_end <= params_start:
+	if params_start < 0:
+		return
+	var params_end := _find_matching_closing_paren(line, params_start)
+	if params_end < 0 or params_end <= params_start:
 		return
 
 	var params_str := line.substr(params_start + 1, params_end - params_start - 1).strip_edges()
 	if params_str.is_empty():
 		return
 
-	var params := params_str.split(",")
+	var params := _split_parameters(params_str)
 	for param in params:
 		var param_name := _extract_param_name(param.strip_edges())
 		if param_name.is_empty():
@@ -115,7 +117,7 @@ func _extract_param_name(param: String) -> String:
 	return param_name.strip_edges()
 
 
-func _extract_variable_declaration(line: String, line_num: int) -> void:
+func _extract_variable_declaration(lines: Array, line_index: int, line: String, line_num: int) -> void:
 	# Skip @export variables (used by editor)
 	if "@export" in line:
 		return
@@ -127,6 +129,9 @@ func _extract_variable_declaration(line: String, line_num: int) -> void:
 	if match_result:
 		var var_name := match_result.get_string(1)
 
+		if _is_property_with_accessor(lines, line_index):
+			return
+
 		# Skip underscore-prefixed if configured
 		if config.ignore_underscore_prefix and var_name.begins_with("_"):
 			return
@@ -137,6 +142,46 @@ func _extract_variable_declaration(line: String, line_num: int) -> void:
 			"type": "variable",
 			"used": false
 		})
+
+
+func _is_property_with_accessor(lines: Array, line_index: int) -> bool:
+	var line := _remove_string_literals(str(lines[line_index]))
+	var accessor_regex := RegEx.new()
+	accessor_regex.compile("(^|\\s)(get|set)\\s*:")
+
+	if accessor_regex.search(line):
+		return true
+
+	var trimmed := line.strip_edges()
+	if not trimmed.ends_with(":"):
+		return false
+
+	var base_indent := _get_indent_width(str(lines[line_index]))
+	for i in range(line_index + 1, lines.size()):
+		var next_line := str(lines[i])
+		var next_trimmed := next_line.strip_edges()
+		if next_trimmed.is_empty() or next_trimmed.begins_with("#"):
+			continue
+
+		if _get_indent_width(next_line) <= base_indent:
+			return false
+
+		return accessor_regex.search(_remove_string_literals(next_line)) != null
+
+	return false
+
+
+func _get_indent_width(line: String) -> int:
+	var width := 0
+	for i in range(line.length()):
+		var ch := line.substr(i, 1)
+		if ch == "\t":
+			width += 4
+		elif ch == " ":
+			width += 1
+		else:
+			break
+	return width
 
 
 func _extract_for_loop_variable(line: String, line_num: int) -> void:
@@ -205,6 +250,99 @@ func _remove_string_literals(line: String) -> String:
 	sq_regex.compile("'[^']*'")
 	result = sq_regex.sub(result, "''", true)
 
+	return result
+
+
+func _find_matching_closing_paren(text: String, open_index: int) -> int:
+	var paren_depth := 0
+	var square_depth := 0
+	var brace_depth := 0
+	var in_string := false
+	var string_quote := ""
+	var escaped := false
+
+	for i in range(open_index, text.length()):
+		var ch := text.substr(i, 1)
+
+		if in_string:
+			if escaped:
+				escaped = false
+			elif ch == "\\":
+				escaped = true
+			elif ch == string_quote:
+				in_string = false
+			continue
+
+		if ch == "\"" or ch == "'":
+			in_string = true
+			string_quote = ch
+			continue
+
+		match ch:
+			"(":
+				paren_depth += 1
+			")":
+				paren_depth -= 1
+				if paren_depth == 0 and square_depth == 0 and brace_depth == 0:
+					return i
+			"[":
+				square_depth += 1
+			"]":
+				square_depth = max(0, square_depth - 1)
+			"{":
+				brace_depth += 1
+			"}":
+				brace_depth = max(0, brace_depth - 1)
+
+	return -1
+
+
+func _split_parameters(params: String) -> Array[String]:
+	var result: Array[String] = []
+	var start := 0
+	var paren_depth := 0
+	var square_depth := 0
+	var brace_depth := 0
+	var in_string := false
+	var string_quote := ""
+	var escaped := false
+
+	for i in range(params.length()):
+		var ch := params.substr(i, 1)
+
+		if in_string:
+			if escaped:
+				escaped = false
+			elif ch == "\\":
+				escaped = true
+			elif ch == string_quote:
+				in_string = false
+			continue
+
+		if ch == "\"" or ch == "'":
+			in_string = true
+			string_quote = ch
+			continue
+
+		match ch:
+			"(":
+				paren_depth += 1
+			")":
+				paren_depth = max(0, paren_depth - 1)
+			"[":
+				square_depth += 1
+			"]":
+				square_depth = max(0, square_depth - 1)
+			"{":
+				brace_depth += 1
+			"}":
+				brace_depth = max(0, brace_depth - 1)
+			",":
+				if paren_depth == 0 and square_depth == 0 and brace_depth == 0:
+					result.append(params.substr(start, i - start).strip_edges())
+					start = i + 1
+
+	result.append(params.substr(start).strip_edges())
 	return result
 
 

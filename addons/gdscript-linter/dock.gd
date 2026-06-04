@@ -92,7 +92,7 @@ var _claude_context_menu_link: String = ""  # Store link when context menu opens
 var current_config: Resource
 
 # Settings manager and controls
-var settings_manager: RefCounted
+var settings_manager: GDLintSettingsManager
 var settings_controls: Dictionary = {}
 
 # Background (stored for theme updates)
@@ -795,7 +795,10 @@ func _start_analysis_after_render() -> void:
 
 func _run_analysis() -> void:
 	var analyzer = CodeAnalyzerScript.new(current_config)
-	current_result = analyzer.analyze_directory("res://")
+	var target_path := "res://"
+	if settings_manager:
+		target_path = settings_manager.get_scan_target_path()
+	current_result = analyzer.analyze_path(target_path)
 
 	# Restore saved type filter if Remember Filters is enabled
 	_restore_saved_type_filter()

@@ -175,6 +175,30 @@ func create_scan_options_card(controls: Dictionary) -> GDLintCollapsibleCard:
 	controls.scan_addons_check = _create_checkbox(Loc.t("scan_addons"), hbox)
 	controls.remember_filters_check = _create_checkbox(Loc.t("remember_filters"), hbox)
 
+	vbox.add_child(HSeparator.new())
+
+	var path_hbox := HBoxContainer.new()
+	path_hbox.add_theme_constant_override("separation", 8)
+	vbox.add_child(path_hbox)
+
+	var path_label := Label.new()
+	path_label.text = Loc.t("scan_path")
+	path_hbox.add_child(path_label)
+
+	controls.scan_path_edit = LineEdit.new()
+	controls.scan_path_edit.placeholder_text = Loc.t("scan_path_placeholder")
+	controls.scan_path_edit.tooltip_text = Loc.t("scan_path_tooltip")
+	controls.scan_path_edit.custom_minimum_size = Vector2(220, 0)
+	controls.scan_path_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	path_hbox.add_child(controls.scan_path_edit)
+
+	controls.scan_path_reset_btn = Button.new()
+	controls.scan_path_reset_btn.icon = _reset_icon
+	controls.scan_path_reset_btn.flat = true
+	controls.scan_path_reset_btn.tooltip_text = Loc.t("reset_all")
+	controls.scan_path_reset_btn.custom_minimum_size = Vector2(16, 16)
+	path_hbox.add_child(controls.scan_path_reset_btn)
+
 	return card
 
 

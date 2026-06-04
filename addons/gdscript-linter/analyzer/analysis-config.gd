@@ -45,6 +45,7 @@ extends Resource
 # Scanning options
 @export var respect_gdignore: bool = true  # Skip directories containing .gdignore files
 @export var scan_addons: bool = false  # Include addons/ folder in scans (disabled by default)
+@export var scan_target_path: String = "res://"  # Root file or directory to analyze
 @export var respect_ignore_directives: bool = true  # Process gdlint:ignore comments (false = show all issues)
 
 # Complexity thresholds
@@ -129,6 +130,7 @@ func _apply_config_value(section: String, key: String, value: String) -> void:
 	match section:
 		"limits": _apply_limits_value(key, value)
 		"checks": _apply_checks_value(key, value)
+		"scanning": _apply_scanning_value(key, value)
 		"exclude": _apply_exclude_value(key, value)
 
 
@@ -176,6 +178,15 @@ func _apply_checks_value(key: String, value: String) -> void:
 		"sealed": check_sealed = enabled
 
 
+func _apply_scanning_value(key: String, value: String) -> void:
+	var enabled := value.to_lower() in ["true", "1", "yes", "on"]
+	match key:
+		"respect_gdignore": respect_gdignore = enabled
+		"scan_addons": scan_addons = enabled
+		"scan_target_path": scan_target_path = _normalize_scan_target_path(value)
+		"respect_ignore_directives": respect_ignore_directives = enabled
+
+
 func _apply_exclude_value(key: String, value: String) -> void:
 	if key == "paths":
 		excluded_paths.clear()
@@ -188,11 +199,33 @@ func _apply_exclude_value(key: String, value: String) -> void:
 func is_path_excluded(path: String) -> bool:
 	for excluded in excluded_paths:
 		# Skip addons/ exclusion if scan_addons is enabled
-		if excluded == "addons/" and scan_addons:
+		if excluded == "addons/" and (scan_addons or _scan_target_allows_addons_path(path)):
 			continue
 		if path.contains(excluded):
 			return true
 	return false
+
+
+func _scan_target_allows_addons_path(path: String) -> bool:
+	var target := _normalize_scan_target_path(scan_target_path)
+	if target == "res://":
+		return false
+	if not target.contains("addons/"):
+		return false
+	return _normalize_scan_target_path(path).begins_with(target)
+
+
+func _normalize_scan_target_path(path: String) -> String:
+	var normalized := path.strip_edges()
+	if normalized.is_empty():
+		return "res://"
+	if normalized == "res:":
+		return "res://"
+	if normalized.begins_with("addons/"):
+		return "res://" + normalized
+	if normalized.ends_with("/") and normalized != "res://":
+		normalized = normalized.trim_suffix("/")
+	return normalized
 
 
 # Save configuration to JSON file
@@ -240,6 +273,7 @@ func save_to_json(path: String) -> bool:
 		"scanning": {
 			"respect_gdignore": respect_gdignore,
 			"scan_addons": scan_addons,
+			"scan_target_path": scan_target_path,
 			"respect_ignore_directives": respect_ignore_directives,
 		},
 		"exclude": {
@@ -332,6 +366,7 @@ func load_from_json(path: String) -> bool:
 		var scanning: Dictionary = data.scanning
 		if scanning.has("respect_gdignore"): respect_gdignore = bool(scanning.respect_gdignore)
 		if scanning.has("scan_addons"): scan_addons = bool(scanning.scan_addons)
+		if scanning.has("scan_target_path"): scan_target_path = _normalize_scan_target_path(str(scanning.scan_target_path))
 		if scanning.has("respect_ignore_directives"): respect_ignore_directives = bool(scanning.respect_ignore_directives)
 
 	# Apply excluded paths

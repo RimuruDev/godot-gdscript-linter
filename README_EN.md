@@ -5,7 +5,7 @@
   <a href="README_EN.md"><img alt="English" src="https://img.shields.io/badge/README-English-blue"></a>
 </p>
 
-![Version](https://img.shields.io/badge/version-3.3.0--abyssmoth.1-blue.svg)
+![Version](https://img.shields.io/badge/version-3.3.0--abyssmoth.2-blue.svg)
 ![Godot](https://img.shields.io/badge/Godot-4.x-blue.svg)
 
 This is a local studio fork of `graydwarf/godot-gdscript-linter`, adapted for AbyssMoth/RimuruDev workflows: fewer string-based dynamic calls, more typed wiring, Russian editor UI, and a more compact bottom-panel layout.
@@ -19,6 +19,8 @@ This is a local studio fork of `graydwarf/godot-gdscript-linter`, adapted for Ab
 - Added UI language mode: `Auto`, `Russian`, `English`.
 - `reflection-call` appears in the type filter, editor report, and HTML export.
 - CLI path handling now supports a single `.gd` file as well as directories.
+- Added a scan target path, so `res://addons/my_addon` can be analyzed without scanning every addon.
+- Fixed `unused-variable`/`unused-parameter` false positives for property `get/set` accessors and generic types with commas.
 
 ## Usage
 
