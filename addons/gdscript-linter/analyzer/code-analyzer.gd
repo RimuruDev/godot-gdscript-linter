@@ -59,6 +59,22 @@ func analyze_directory(path: String):
 	return result
 
 
+func analyze_path(path: String):
+	if not path.ends_with(".gd"):
+		return analyze_directory(path)
+
+	result = AnalysisResultClass.new()
+	_start_time = Time.get_ticks_msec()
+	_sealed_classes.clear()
+
+	var file_result = analyze_file(path)
+	if file_result:
+		result.add_file_result(file_result)
+
+	result.analysis_time_ms = Time.get_ticks_msec() - _start_time
+	return result
+
+
 func analyze_file(file_path: String):
 	var file := FileAccess.open(file_path, FileAccess.READ)
 	if not file:

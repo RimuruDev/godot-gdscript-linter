@@ -90,6 +90,7 @@ Example `gdlint.json`:
 		"magic_numbers": true,
 		"commented_code": true,
 		"missing_types": true,
+		"reflection_calls": true,
 		"cyclomatic_complexity": true,
 		"god_class": true,
 		"naming_conventions": true,

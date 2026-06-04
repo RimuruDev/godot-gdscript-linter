@@ -11,6 +11,7 @@ signal export_config_requested
 signal export_folder_browse_requested
 
 const CLAUDE_CODE_DEFAULT_COMMAND := "claude --permission-mode plan"
+const Loc = preload("res://addons/gdscript-linter/ui/localization.gd")
 const CLAUDE_CODE_DEFAULT_INSTRUCTIONS := """When analyzing linter issues, consider both quick fixes AND architectural improvements:
 
 1. **Evaluate the code holistically** - Before suggesting an ignore directive, ask:
@@ -44,10 +45,11 @@ var show_html_export: bool = true
 var show_md_export: bool = false
 var show_ignored_issues: bool = true
 var show_full_path: bool = false
+var language_mode: String = "auto"
 
 # Settings state - Export
 var filter_exports: bool = false
-var include_context_in_exports: bool = true  # Enabled by default
+var include_context_in_exports: bool = false
 var export_folder_path: String = ""  # Empty = res:// (project root)
 
 # Settings state - Scanning
@@ -68,6 +70,7 @@ var check_print_statements: bool = true
 var check_magic_numbers: bool = true
 var check_commented_code: bool = true
 var check_missing_types: bool = true
+var check_reflection_calls: bool = true
 var check_function_length: bool = true
 var check_parameters: bool = true
 var check_nesting: bool = true
@@ -91,7 +94,7 @@ var claude_custom_instructions: String = ""
 var _check_control_keys: Array[String] = [
 	"check_naming_conventions", "check_long_lines", "check_todo_comments",
 	"check_print_statements", "check_magic_numbers", "check_commented_code",
-	"check_missing_types", "check_function_length", "check_parameters",
+	"check_missing_types", "check_reflection_calls", "check_function_length", "check_parameters",
 	"check_nesting", "check_cyclomatic_complexity", "check_empty_functions",
 	"check_missing_return_type", "check_file_length", "check_god_class",
 	"check_unused_variables", "check_unused_parameters",
@@ -120,10 +123,12 @@ func load_settings() -> void:
 	show_md_export = _get_setting(editor_settings, "code_quality/display/show_md_export", false)
 	show_ignored_issues = _get_setting(editor_settings, "code_quality/display/show_ignored", true)
 	show_full_path = _get_setting(editor_settings, "code_quality/display/show_full_path", false)
+	language_mode = _get_setting(editor_settings, "code_quality/ui/language", "auto")
+	Loc.set_language_mode(language_mode)
 
 	# Load export settings
 	filter_exports = _get_setting(editor_settings, "code_quality/export/filter_exports", false)
-	include_context_in_exports = _get_setting(editor_settings, "code_quality/export/include_context", true)
+	include_context_in_exports = _get_setting(editor_settings, "code_quality/export/include_context", false)
 	export_folder_path = _get_setting(editor_settings, "code_quality/export/folder_path", "")
 
 	# Load scanning settings
@@ -173,6 +178,7 @@ func _load_check_settings(editor_settings: EditorSettings) -> void:
 		"magic_numbers": "check_magic_numbers",
 		"commented_code": "check_commented_code",
 		"missing_types": "check_missing_types",
+		"reflection_calls": "check_reflection_calls",
 		"function_length": "check_function_length",
 		"parameters": "check_parameters",
 		"nesting": "check_nesting",
@@ -228,6 +234,7 @@ func _apply_to_ui() -> void:
 		"check_magic_numbers": func(): return check_magic_numbers,
 		"check_commented_code": func(): return check_commented_code,
 		"check_missing_types": func(): return check_missing_types,
+		"check_reflection_calls": func(): return check_reflection_calls,
 		# Code checks - Functions
 		"check_function_length": func(): return check_function_length,
 		"check_parameters": func(): return check_parameters,
@@ -281,6 +288,9 @@ func _apply_to_ui() -> void:
 		if controls.has(control_key):
 			controls[control_key].text = text_mappings[control_key].call()
 
+	if controls.has("language_option"):
+		_select_language_option()
+
 
 # Connect all UI control signals
 func connect_controls(export_btn: Button, html_export_btn: Button, md_export_btn: Button) -> void:
@@ -309,6 +319,8 @@ func connect_controls(export_btn: Button, html_export_btn: Button, md_export_btn
 		controls.show_ignored_check.toggled.connect(_on_show_ignored_toggled)
 	if controls.has("show_full_path_check"):
 		controls.show_full_path_check.toggled.connect(_on_show_full_path_toggled)
+	if controls.has("language_option"):
+		controls.language_option.item_selected.connect(_on_language_selected)
 
 	# Code checks - Scanning options
 	if controls.has("respect_gdignore_check"):
@@ -450,6 +462,21 @@ func _on_show_full_path_toggled(pressed: bool) -> void:
 	display_refresh_needed.emit()
 
 
+func _select_language_option() -> void:
+	for i in range(controls.language_option.item_count):
+		if controls.language_option.get_item_metadata(i) == language_mode:
+			controls.language_option.select(i)
+			return
+	controls.language_option.select(0)
+
+
+func _on_language_selected(index: int) -> void:
+	language_mode = str(controls.language_option.get_item_metadata(index))
+	Loc.set_language_mode(language_mode)
+	save_setting("code_quality/ui/language", language_mode)
+	display_refresh_needed.emit()
+
+
 func _on_respect_gdignore_toggled(pressed: bool) -> void:
 	respect_gdignore = pressed
 	config.respect_gdignore = pressed
@@ -538,6 +565,7 @@ func _connect_check_signals() -> void:
 		"check_magic_numbers": "magic_numbers",
 		"check_commented_code": "commented_code",
 		"check_missing_types": "missing_types",
+		"check_reflection_calls": "reflection_calls",
 		"check_function_length": "function_length",
 		"check_parameters": "parameters",
 		"check_nesting": "nesting",

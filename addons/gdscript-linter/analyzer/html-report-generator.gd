@@ -17,6 +17,7 @@ const ISSUE_TYPES := {
 	"magic-number": "Magic Number",
 	"commented-code": "Commented Code",
 	"missing-type-hint": "Missing Type Hint",
+	"reflection-call": "Reflection Call",
 	"missing-return-type": "Missing Return Type",
 	"too-many-params": "Too Many Params",
 	"deep-nesting": "Deep Nesting",

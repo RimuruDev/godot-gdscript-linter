@@ -5,6 +5,8 @@ extends RefCounted
 class_name GDLintSettingsCardBuilder
 ## Creates settings panel cards with consistent styling
 
+const Loc = preload("res://addons/gdscript-linter/ui/localization.gd")
+
 # Default analysis limits
 const DEFAULT_FILE_LINES_SOFT := 200
 const DEFAULT_FILE_LINES_HARD := 300
@@ -62,17 +64,13 @@ func build_settings_panel(settings_panel: PanelContainer, controls: Dictionary) 
 	cards_vbox.add_child(create_scan_options_card(controls))
 	cards_vbox.add_child(create_code_checks_card(controls))
 	cards_vbox.add_child(create_limits_card(controls))
-	cards_vbox.add_child(_claude_card_builder.create_card(controls))
-	cards_vbox.add_child(create_cli_options_card(controls))
-	cards_vbox.add_child(_create_help_card())
-
 	settings_panel.add_child(scroll)
 	settings_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 
 
 # Create Display Options collapsible card with checkboxes
 func create_display_options_card(controls: Dictionary) -> GDLintCollapsibleCard:
-	var card := GDLintCollapsibleCard.new("Display Options", "code_quality/ui/display_options_collapsed")
+	var card := GDLintCollapsibleCard.new(Loc.t("display_options"), "code_quality/ui/display_options_collapsed")
 	var vbox := card.get_content_container()
 
 	# Row of checkboxes for display toggles
@@ -80,17 +78,34 @@ func create_display_options_card(controls: Dictionary) -> GDLintCollapsibleCard:
 	hbox.add_theme_constant_override("separation", 15)
 	vbox.add_child(hbox)
 
-	controls.show_issues_check = _create_checkbox("Show Issues", hbox)
-	controls.show_debt_check = _create_checkbox("Show Debt", hbox)
-	controls.show_ignored_check = _create_checkbox("Show Ignored", hbox, "Show ignored issues in a separate section")
-	controls.show_full_path_check = _create_checkbox("Show Full Path", hbox, "Show full res:// path instead of just filename")
+	controls.show_issues_check = _create_checkbox(Loc.t("show_issues"), hbox)
+	controls.show_debt_check = _create_checkbox(Loc.t("show_debt"), hbox)
+	controls.show_ignored_check = _create_checkbox(Loc.t("show_ignored"), hbox)
+	controls.show_full_path_check = _create_checkbox(Loc.t("show_full_path"), hbox)
+
+	var language_row := HBoxContainer.new()
+	language_row.add_theme_constant_override("separation", 8)
+	vbox.add_child(language_row)
+
+	var language_label := Label.new()
+	language_label.text = Loc.t("language") + ":"
+	language_row.add_child(language_label)
+
+	controls.language_option = OptionButton.new()
+	controls.language_option.add_item(Loc.t("language_auto"), 0)
+	controls.language_option.set_item_metadata(0, "auto")
+	controls.language_option.add_item(Loc.t("language_ru"), 1)
+	controls.language_option.set_item_metadata(1, "ru")
+	controls.language_option.add_item(Loc.t("language_en"), 2)
+	controls.language_option.set_item_metadata(2, "en")
+	language_row.add_child(controls.language_option)
 
 	return card
 
 
 # Create Export Options collapsible card
 func create_export_options_card(controls: Dictionary) -> GDLintCollapsibleCard:
-	var card := GDLintCollapsibleCard.new("Export Options", "code_quality/ui/export_options_collapsed")
+	var card := GDLintCollapsibleCard.new(Loc.t("export_options"), "code_quality/ui/export_options_collapsed")
 	var vbox := card.get_content_container()
 
 	# Row 1: Export visibility toggles
@@ -98,9 +113,9 @@ func create_export_options_card(controls: Dictionary) -> GDLintCollapsibleCard:
 	hbox.add_theme_constant_override("separation", 15)
 	vbox.add_child(hbox)
 
-	controls.show_json_export_check = _create_checkbox("Show JSON Export", hbox)
-	controls.show_html_export_check = _create_checkbox("Show HTML Export", hbox)
-	controls.show_md_export_check = _create_checkbox("Show .md Export", hbox)
+	controls.show_json_export_check = _create_checkbox(Loc.t("show_json_export"), hbox)
+	controls.show_html_export_check = _create_checkbox(Loc.t("show_html_export"), hbox)
+	controls.show_md_export_check = _create_checkbox(Loc.t("show_md_export"), hbox)
 
 	# Separator
 	vbox.add_child(HSeparator.new())
@@ -110,10 +125,7 @@ func create_export_options_card(controls: Dictionary) -> GDLintCollapsibleCard:
 	options_hbox.add_theme_constant_override("separation", 15)
 	vbox.add_child(options_hbox)
 
-	controls.filter_exports_check = _create_checkbox("Filter Exports", options_hbox,
-		"When enabled, only filtered items are exported. When disabled, everything gets exported.")
-	controls.include_context_check = _create_checkbox("Include Context", options_hbox,
-		"Include custom instructions from Claude Code settings in exports for AI tools.")
+	controls.filter_exports_check = _create_checkbox(Loc.t("filter_exports"), options_hbox)
 
 	# Separator
 	vbox.add_child(HSeparator.new())
@@ -124,25 +136,26 @@ func create_export_options_card(controls: Dictionary) -> GDLintCollapsibleCard:
 	vbox.add_child(folder_hbox)
 
 	var folder_label := Label.new()
-	folder_label.text = "Export Folder:"
+	folder_label.text = Loc.t("export_folder")
 	folder_hbox.add_child(folder_label)
 
 	controls.export_folder_edit = LineEdit.new()
 	controls.export_folder_edit.placeholder_text = "res:// (project root)"
+	controls.export_folder_edit.custom_minimum_size = Vector2(160, 0)
 	controls.export_folder_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	controls.export_folder_edit.tooltip_text = "Custom folder path for exports. Leave empty to use project root (res://)"
+	controls.export_folder_edit.tooltip_text = Loc.t("export_folder")
 	folder_hbox.add_child(controls.export_folder_edit)
 
 	controls.export_folder_btn = Button.new()
-	controls.export_folder_btn.text = "Browse..."
+	controls.export_folder_btn.text = Loc.t("browse")
 	controls.export_folder_btn.flat = true
-	controls.export_folder_btn.tooltip_text = "Select export folder"
+	controls.export_folder_btn.tooltip_text = Loc.t("browse")
 	folder_hbox.add_child(controls.export_folder_btn)
 
 	controls.export_folder_reset_btn = Button.new()
 	controls.export_folder_reset_btn.icon = _reset_icon
 	controls.export_folder_reset_btn.flat = true
-	controls.export_folder_reset_btn.tooltip_text = "Reset to default (project root)"
+	controls.export_folder_reset_btn.tooltip_text = Loc.t("reset_all")
 	controls.export_folder_reset_btn.custom_minimum_size = Vector2(16, 16)
 	folder_hbox.add_child(controls.export_folder_reset_btn)
 
@@ -151,26 +164,23 @@ func create_export_options_card(controls: Dictionary) -> GDLintCollapsibleCard:
 
 # Create Scan Options collapsible card
 func create_scan_options_card(controls: Dictionary) -> GDLintCollapsibleCard:
-	var card := GDLintCollapsibleCard.new("Scan Options", "code_quality/ui/scan_options_collapsed")
+	var card := GDLintCollapsibleCard.new(Loc.t("scan_options"), "code_quality/ui/scan_options_collapsed")
 	var vbox := card.get_content_container()
 
 	var hbox := HBoxContainer.new()
 	hbox.add_theme_constant_override("separation", 15)
 	vbox.add_child(hbox)
 
-	controls.respect_gdignore_check = _create_checkbox("Respect .gdignore", hbox,
-		"Skip directories containing .gdignore files")
-	controls.scan_addons_check = _create_checkbox("Scan addons/", hbox,
-		"Include addons/ folder in scans")
-	controls.remember_filters_check = _create_checkbox("Remember Filters", hbox,
-		"Persist Severity, Type, and Filter selections across restarts")
+	controls.respect_gdignore_check = _create_checkbox(Loc.t("respect_gdignore"), hbox)
+	controls.scan_addons_check = _create_checkbox(Loc.t("scan_addons"), hbox)
+	controls.remember_filters_check = _create_checkbox(Loc.t("remember_filters"), hbox)
 
 	return card
 
 
 # Create Code Checks collapsible card with toggles for all analysis checks
 func create_code_checks_card(controls: Dictionary) -> GDLintCollapsibleCard:
-	var card := GDLintCollapsibleCard.new("Code Checks", "code_quality/ui/code_checks_collapsed")
+	var card := GDLintCollapsibleCard.new(Loc.t("code_checks"), "code_quality/ui/code_checks_collapsed")
 	var vbox := card.get_content_container()
 
 	# Enable All / Disable All buttons row
@@ -179,75 +189,77 @@ func create_code_checks_card(controls: Dictionary) -> GDLintCollapsibleCard:
 	vbox.add_child(btn_row)
 
 	controls.enable_all_checks_btn = Button.new()
-	controls.enable_all_checks_btn.text = "Enable All"
+	controls.enable_all_checks_btn.text = Loc.t("enable_all")
 	controls.enable_all_checks_btn.flat = true
-	controls.enable_all_checks_btn.tooltip_text = "Enable all code checks"
+	controls.enable_all_checks_btn.tooltip_text = Loc.t("enable_all")
 	btn_row.add_child(controls.enable_all_checks_btn)
 
 	controls.disable_all_checks_btn = Button.new()
-	controls.disable_all_checks_btn.text = "Disable All"
+	controls.disable_all_checks_btn.text = Loc.t("disable_all")
 	controls.disable_all_checks_btn.flat = true
-	controls.disable_all_checks_btn.tooltip_text = "Disable all code checks"
+	controls.disable_all_checks_btn.tooltip_text = Loc.t("disable_all")
 	btn_row.add_child(controls.disable_all_checks_btn)
 
 	# Naming section
-	_add_section_header(vbox, "Naming")
+	_add_section_header(vbox, Loc.t("naming"))
 	var naming_grid := _create_check_grid(vbox)
-	controls.check_naming_conventions = _add_check_to_grid(naming_grid, "Naming Conventions",
+	controls.check_naming_conventions = _add_check_to_grid(naming_grid, Loc.t("naming_conventions"),
 		"Check class, function, signal, const, and enum naming")
 
 	# Style section
-	_add_section_header(vbox, "Style")
+	_add_section_header(vbox, Loc.t("style"))
 	var style_grid := _create_check_grid(vbox)
-	controls.check_long_lines = _add_check_to_grid(style_grid, "Long Lines",
+	controls.check_long_lines = _add_check_to_grid(style_grid, Loc.t("long_line"),
 		"Lines exceeding max length")
-	controls.check_todo_comments = _add_check_to_grid(style_grid, "TODO Comments",
+	controls.check_todo_comments = _add_check_to_grid(style_grid, Loc.t("todo_fixme"),
 		"TODO, FIXME, HACK, etc.")
-	controls.check_print_statements = _add_check_to_grid(style_grid, "Print Statements",
+	controls.check_print_statements = _add_check_to_grid(style_grid, Loc.t("print_statement"),
 		"Debug print statements")
-	controls.check_magic_numbers = _add_check_to_grid(style_grid, "Magic Numbers",
+	controls.check_magic_numbers = _add_check_to_grid(style_grid, Loc.t("magic_number"),
 		"Hardcoded numbers")
-	controls.check_commented_code = _add_check_to_grid(style_grid, "Commented Code",
+	controls.check_commented_code = _add_check_to_grid(style_grid, Loc.t("commented_code"),
 		"Commented-out code blocks")
-	controls.check_missing_types = _add_check_to_grid(style_grid, "Missing Types",
+	controls.check_missing_types = _add_check_to_grid(style_grid, Loc.t("missing_type_hint"),
 		"Variables without type hints")
+	controls.check_reflection_calls = _add_check_to_grid(style_grid, Loc.t("reflection_call"),
+		"Dynamic Object APIs such as call(), call_deferred(), has_method(), and emit_signal()")
 
 	# Functions section
-	_add_section_header(vbox, "Functions")
+	_add_section_header(vbox, Loc.t("functions"))
 	var funcs_grid := _create_check_grid(vbox)
-	controls.check_function_length = _add_check_to_grid(funcs_grid, "Long Functions",
+	controls.check_function_length = _add_check_to_grid(funcs_grid, Loc.t("long_function"),
 		"Functions exceeding line limits")
-	controls.check_parameters = _add_check_to_grid(funcs_grid, "Too Many Params",
+	controls.check_parameters = _add_check_to_grid(funcs_grid, Loc.t("too_many_params"),
 		"Functions with too many parameters")
-	controls.check_nesting = _add_check_to_grid(funcs_grid, "Deep Nesting",
+	controls.check_nesting = _add_check_to_grid(funcs_grid, Loc.t("deep_nesting"),
 		"Excessive nesting depth")
-	controls.check_cyclomatic_complexity = _add_check_to_grid(funcs_grid, "High Complexity",
+	controls.check_cyclomatic_complexity = _add_check_to_grid(funcs_grid, Loc.t("high_complexity"),
 		"High cyclomatic complexity")
-	controls.check_empty_functions = _add_check_to_grid(funcs_grid, "Empty Functions",
+	controls.check_empty_functions = _add_check_to_grid(funcs_grid, Loc.t("empty_function"),
 		"Functions with no implementation")
-	controls.check_missing_return_type = _add_check_to_grid(funcs_grid, "Missing Return Type",
+	controls.check_missing_return_type = _add_check_to_grid(funcs_grid, Loc.t("missing_return_type"),
 		"Public functions without return type")
 
 	# Structure section
-	_add_section_header(vbox, "Structure")
+	_add_section_header(vbox, Loc.t("structure"))
 	var struct_grid := _create_check_grid(vbox)
-	controls.check_file_length = _add_check_to_grid(struct_grid, "Long Files",
+	controls.check_file_length = _add_check_to_grid(struct_grid, Loc.t("file_length"),
 		"Files exceeding line limits")
-	controls.check_god_class = _add_check_to_grid(struct_grid, "God Class",
+	controls.check_god_class = _add_check_to_grid(struct_grid, Loc.t("god_class"),
 		"Classes with too many members")
-	controls.check_unused_variables = _add_check_to_grid(struct_grid, "Unused Variables",
+	controls.check_unused_variables = _add_check_to_grid(struct_grid, Loc.t("unused_variable"),
 		"Local variables never used")
-	controls.check_unused_parameters = _add_check_to_grid(struct_grid, "Unused Parameters",
+	controls.check_unused_parameters = _add_check_to_grid(struct_grid, Loc.t("unused_parameter"),
 		"Function parameters never used")
 
 	# Defensive section
-	_add_section_header(vbox, "Defensive")
+	_add_section_header(vbox, Loc.t("defensive"))
 	var def_grid := _create_check_grid(vbox)
-	controls.check_ascii_only = _add_check_to_grid(def_grid, "ASCII Only",
+	controls.check_ascii_only = _add_check_to_grid(def_grid, Loc.t("ascii_violation"),
 		"Enforce ASCII-only in attributed files")
-	controls.check_strict_limits = _add_check_to_grid(def_grid, "Strict Limits",
+	controls.check_strict_limits = _add_check_to_grid(def_grid, Loc.t("strict_limit"),
 		"Enforce stricter thresholds via directives")
-	controls.check_sealed = _add_check_to_grid(def_grid, "Sealed Classes",
+	controls.check_sealed = _add_check_to_grid(def_grid, Loc.t("sealed_violation"),
 		"Prevent inheritance of sealed classes")
 
 	return card
@@ -276,7 +288,7 @@ func _create_check_grid(container: VBoxContainer) -> GridContainer:
 func _add_check_to_grid(grid: GridContainer, label_text: String, tooltip: String) -> CheckBox:
 	var check := CheckBox.new()
 	check.text = label_text
-	check.tooltip_text = tooltip
+	check.tooltip_text = tooltip if Loc.get_language() == "en" else label_text
 	check.button_pressed = true  # Default to enabled
 	check.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var font_color: Color = EditorInterface.get_editor_theme().get_color("font_color", "Editor")
@@ -287,7 +299,7 @@ func _add_check_to_grid(grid: GridContainer, label_text: String, tooltip: String
 
 # Create Analysis Limits collapsible card with spinboxes
 func create_limits_card(controls: Dictionary) -> GDLintCollapsibleCard:
-	var card := GDLintCollapsibleCard.new("Analysis Limits", "code_quality/ui/limits_collapsed")
+	var card := GDLintCollapsibleCard.new(Loc.t("analysis_limits"), "code_quality/ui/limits_collapsed")
 	var vbox := card.get_content_container()
 
 	# Reset All button row
@@ -297,8 +309,8 @@ func create_limits_card(controls: Dictionary) -> GDLintCollapsibleCard:
 
 	var reset_all_btn := Button.new()
 	reset_all_btn.icon = _reset_icon
-	reset_all_btn.text = "Reset All"
-	reset_all_btn.tooltip_text = "Reset all limits to defaults"
+	reset_all_btn.text = Loc.t("reset_all")
+	reset_all_btn.tooltip_text = Loc.t("reset_all")
 	reset_all_btn.flat = true
 	controls.reset_all_limits_btn = reset_all_btn
 	reset_row.add_child(reset_all_btn)
@@ -311,24 +323,24 @@ func create_limits_card(controls: Dictionary) -> GDLintCollapsibleCard:
 	vbox.add_child(grid)
 
 	# Row 1: File lines soft/hard
-	controls.max_lines_soft_spin = _add_spin_row(grid, "File Lines (warn):", 50, 1000, DEFAULT_FILE_LINES_SOFT, DEFAULT_FILE_LINES_SOFT)
-	controls.max_lines_hard_spin = _add_spin_row(grid, "File Lines (crit):", 100, 2000, DEFAULT_FILE_LINES_HARD, DEFAULT_FILE_LINES_HARD)
+	controls.max_lines_soft_spin = _add_spin_row(grid, Loc.t("file_lines_warn"), 50, 1000, DEFAULT_FILE_LINES_SOFT, DEFAULT_FILE_LINES_SOFT)
+	controls.max_lines_hard_spin = _add_spin_row(grid, Loc.t("file_lines_crit"), 100, 2000, DEFAULT_FILE_LINES_HARD, DEFAULT_FILE_LINES_HARD)
 
 	# Row 2: Function lines / complexity warning
-	controls.max_func_lines_spin = _add_spin_row(grid, "Func Lines:", 10, 200, DEFAULT_FUNC_LINES, DEFAULT_FUNC_LINES)
-	controls.max_complexity_spin = _add_spin_row(grid, "Complexity (warn):", 5, 50, DEFAULT_COMPLEXITY_WARN, DEFAULT_COMPLEXITY_WARN)
+	controls.max_func_lines_spin = _add_spin_row(grid, Loc.t("func_lines"), 10, 200, DEFAULT_FUNC_LINES, DEFAULT_FUNC_LINES)
+	controls.max_complexity_spin = _add_spin_row(grid, Loc.t("complexity_warn"), 5, 50, DEFAULT_COMPLEXITY_WARN, DEFAULT_COMPLEXITY_WARN)
 
 	# Row 3: Func lines critical / complexity critical
-	controls.func_lines_crit_spin = _add_spin_row(grid, "Func Lines (crit):", 20, 300, DEFAULT_FUNC_LINES_CRIT, DEFAULT_FUNC_LINES_CRIT)
-	controls.max_complexity_crit_spin = _add_spin_row(grid, "Complexity (crit):", 5, 50, DEFAULT_COMPLEXITY_CRIT, DEFAULT_COMPLEXITY_CRIT)
+	controls.func_lines_crit_spin = _add_spin_row(grid, Loc.t("func_lines_crit"), 20, 300, DEFAULT_FUNC_LINES_CRIT, DEFAULT_FUNC_LINES_CRIT)
+	controls.max_complexity_crit_spin = _add_spin_row(grid, Loc.t("complexity_crit"), 5, 50, DEFAULT_COMPLEXITY_CRIT, DEFAULT_COMPLEXITY_CRIT)
 
 	# Row 4: Max params / nesting
-	controls.max_params_spin = _add_spin_row(grid, "Max Params:", 2, 15, DEFAULT_MAX_PARAMS, DEFAULT_MAX_PARAMS)
-	controls.max_nesting_spin = _add_spin_row(grid, "Max Nesting:", 2, 10, DEFAULT_MAX_NESTING, DEFAULT_MAX_NESTING)
+	controls.max_params_spin = _add_spin_row(grid, Loc.t("max_params"), 2, 15, DEFAULT_MAX_PARAMS, DEFAULT_MAX_PARAMS)
+	controls.max_nesting_spin = _add_spin_row(grid, Loc.t("max_nesting"), 2, 10, DEFAULT_MAX_NESTING, DEFAULT_MAX_NESTING)
 
 	# Row 5: God class thresholds
-	controls.god_class_funcs_spin = _add_spin_row(grid, "God Class Funcs:", 5, 50, DEFAULT_GOD_CLASS_FUNCS, DEFAULT_GOD_CLASS_FUNCS)
-	controls.god_class_signals_spin = _add_spin_row(grid, "God Class Signals:", 3, 30, DEFAULT_GOD_CLASS_SIGNALS, DEFAULT_GOD_CLASS_SIGNALS)
+	controls.god_class_funcs_spin = _add_spin_row(grid, Loc.t("god_class_funcs"), 5, 50, DEFAULT_GOD_CLASS_FUNCS, DEFAULT_GOD_CLASS_FUNCS)
+	controls.god_class_signals_spin = _add_spin_row(grid, Loc.t("god_class_signals"), 3, 30, DEFAULT_GOD_CLASS_SIGNALS, DEFAULT_GOD_CLASS_SIGNALS)
 
 	return card
 
@@ -372,33 +384,14 @@ func create_header_bar() -> HBoxContainer:
 
 	# Subtitle: " - Code Quality Analyzer for GDScript" in muted color
 	var subtitle := Label.new()
-	subtitle.text = " -   Code Quality Analyzer for GDScript"
+	subtitle.text = Loc.t("addon_subtitle")
 	subtitle.add_theme_font_size_override("font_size", 17)
 	# No color override - inherits default editor font color
 	hbox.add_child(subtitle)
 
-	# Spacer to push links to the right
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hbox.add_child(spacer)
-
-	# Links
-	var link_data := [
-		["Discord", "https://discord.com/channels/779046317896106034/779046318516731917"],
-		["GitHub", "https://github.com/graydwarf/godot-gdscript-linter"],
-		["More Tools", "https://poplava.itch.io"]
-	]
-	for data in link_data:
-		var btn := Button.new()
-		btn.text = data[0]
-		btn.flat = true
-		btn.tooltip_text = data[1]
-		# No font_color override - inherits default editor font color
-		btn.add_theme_color_override("font_hover_color", GDLintThemeColors.get_color("accent"))
-		btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-		var url: String = data[1]
-		btn.pressed.connect(func(): OS.shell_open(url))
-		hbox.add_child(btn)
 
 	return hbox
 
@@ -409,6 +402,8 @@ func _create_checkbox(label_text: String, container: HBoxContainer, tooltip: Str
 	check.text = label_text
 	if tooltip != "":
 		check.tooltip_text = tooltip
+	else:
+		check.tooltip_text = label_text
 	var font_color: Color = EditorInterface.get_editor_theme().get_color("font_color", "Editor")
 	check.add_theme_color_override("font_pressed_color", font_color)
 	container.add_child(check)
@@ -430,7 +425,7 @@ func _add_spin_row(grid: GridContainer, label_text: String, min_val: int, max_va
 
 	var reset_btn := Button.new()
 	reset_btn.icon = _reset_icon
-	reset_btn.tooltip_text = "Reset to default (%d)" % default_val
+	reset_btn.tooltip_text = Loc.t("reset_default") % default_val
 	reset_btn.flat = true
 	reset_btn.custom_minimum_size = Vector2(16, 16)
 	reset_btn.pressed.connect(func(): spin.value = default_val)
@@ -441,6 +436,6 @@ func _add_spin_row(grid: GridContainer, label_text: String, min_val: int, max_va
 
 # Create Help collapsible card
 func _create_help_card() -> GDLintCollapsibleCard:
-	var card := GDLintCollapsibleCard.new("Help", "code_quality/ui/help_collapsed")
+	var card := GDLintCollapsibleCard.new(Loc.t("help"), "code_quality/ui/help_collapsed")
 	_help_card_builder.create_card_content(card.get_content_container())
 	return card

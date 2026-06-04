@@ -160,7 +160,7 @@ func _run_analysis() -> void:
 	# Analyze all paths and merge results
 	var merged_result = null
 	for target_path in _target_paths:
-		var result = analyzer.analyze_directory(target_path)
+		var result = analyzer.analyze_path(target_path)
 		if merged_result == null:
 			merged_result = result
 		else:
@@ -217,6 +217,7 @@ func _apply_check_filter_to_config(config: Resource) -> void:
 		"magic-number": "check_magic_numbers",
 		"commented-code": "check_commented_code",
 		"missing-type-hint": "check_missing_types",
+		"reflection-call": "check_reflection_calls",
 		"missing-return-type": "check_missing_return_type",
 		"too-many-params": "check_parameters",
 		"deep-nesting": "check_nesting",
