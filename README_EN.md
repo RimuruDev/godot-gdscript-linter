@@ -5,7 +5,7 @@
   <a href="README_EN.md"><img alt="English" src="https://img.shields.io/badge/README-English-blue"></a>
 </p>
 
-![Version](https://img.shields.io/badge/version-3.3.0--abyssmoth.2-blue.svg)
+![Version](https://img.shields.io/badge/version-3.3.0--abyssmoth.3-blue.svg)
 ![Godot](https://img.shields.io/badge/Godot-4.x-blue.svg)
 
 This is a local studio fork of `graydwarf/godot-gdscript-linter`, adapted for AbyssMoth/RimuruDev workflows: fewer string-based dynamic calls, more typed wiring, Russian editor UI, and a more compact bottom-panel layout.

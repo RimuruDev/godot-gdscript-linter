@@ -183,7 +183,7 @@ func check_reflection_calls(line: String, line_num: int) -> Variant:
 
 	var code := _strip_string_literals(line)
 	for method_name in config.reflection_call_patterns:
-		if _contains_function_call(code, method_name):
+		if _contains_reflection_call(line, code, method_name):
 			return {
 				"line": line_num,
 				"severity": "warning",
@@ -261,7 +261,7 @@ func _strip_string_literals(line: String) -> String:
 	return result
 
 
-func _contains_function_call(code: String, method_name: String) -> bool:
+func _contains_reflection_call(raw_code: String, code: String, method_name: String) -> bool:
 	var search_from := 0
 	while search_from < code.length():
 		var pos := code.find(method_name, search_from)
@@ -270,11 +270,51 @@ func _contains_function_call(code: String, method_name: String) -> bool:
 
 		if _is_word_boundary_before(code, pos) and _has_call_parenthesis_after(code, pos + method_name.length()):
 			if not _is_function_declaration(code, method_name):
+				if _is_safe_callable_invocation(raw_code, code, method_name, pos):
+					search_from = pos + method_name.length()
+					continue
 				return true
 
 		search_from = pos + method_name.length()
 
 	return false
+
+
+func _is_safe_callable_invocation(raw_code: String, code: String, method_name: String, pos: int) -> bool:
+	if method_name != "call" and method_name != "call_deferred":
+		return false
+
+	var open_paren_pos := _find_call_open_paren(code, pos + method_name.length())
+	if open_paren_pos < 0:
+		return false
+
+	return not _first_argument_is_string_method_name(raw_code, open_paren_pos)
+
+
+func _find_call_open_paren(code: String, pos: int) -> int:
+	var i := pos
+	while i < code.length() and (code[i] == " " or code[i] == "\t"):
+		i += 1
+
+	if i < code.length() and code[i] == "(":
+		return i
+	return -1
+
+
+func _first_argument_is_string_method_name(raw_code: String, open_paren_pos: int) -> bool:
+	var i := open_paren_pos + 1
+	while i < raw_code.length() and (raw_code[i] == " " or raw_code[i] == "\t"):
+		i += 1
+
+	if i >= raw_code.length() or raw_code[i] == ")":
+		return false
+
+	if raw_code[i] == "&":
+		i += 1
+		while i < raw_code.length() and (raw_code[i] == " " or raw_code[i] == "\t"):
+			i += 1
+
+	return i < raw_code.length() and (raw_code[i] == "\"" or raw_code[i] == "'")
 
 
 func _is_word_boundary_before(code: String, pos: int) -> bool:
