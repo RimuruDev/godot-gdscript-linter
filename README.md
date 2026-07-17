@@ -116,6 +116,11 @@ ascii_only = true
 strict_limits = true
 sealed = true
 
+[scanning]
+scan_addons = false
+included_addons = gdscript-linter, my-other-addon
+excluded_addons = some-third-party-addon
+
 [exclude]
 paths = addons/, .godot/, tests/mocks/
 ```

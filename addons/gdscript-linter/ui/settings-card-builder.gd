@@ -199,6 +199,52 @@ func create_scan_options_card(controls: Dictionary) -> GDLintCollapsibleCard:
 	controls.scan_path_reset_btn.custom_minimum_size = Vector2(16, 16)
 	path_hbox.add_child(controls.scan_path_reset_btn)
 
+	vbox.add_child(HSeparator.new())
+
+	# Row: Include Addons
+	var include_hbox := HBoxContainer.new()
+	include_hbox.add_theme_constant_override("separation", 8)
+	vbox.add_child(include_hbox)
+
+	var include_label := Label.new()
+	include_label.text = "Include Addons:"
+	include_hbox.add_child(include_label)
+
+	controls.included_addons_edit = LineEdit.new()
+	controls.included_addons_edit.placeholder_text = "addon1, addon2  (empty = use Scan addons/ checkbox)"
+	controls.included_addons_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	controls.included_addons_edit.tooltip_text = "Scan ONLY these addon folders (comma-separated names). Overrides 'Scan addons/' when non-empty."
+	include_hbox.add_child(controls.included_addons_edit)
+
+	controls.included_addons_reset_btn = Button.new()
+	controls.included_addons_reset_btn.icon = _reset_icon
+	controls.included_addons_reset_btn.flat = true
+	controls.included_addons_reset_btn.tooltip_text = "Clear (use Scan addons/ checkbox)"
+	controls.included_addons_reset_btn.custom_minimum_size = Vector2(16, 16)
+	include_hbox.add_child(controls.included_addons_reset_btn)
+
+	# Row: Exclude Addons
+	var exclude_hbox := HBoxContainer.new()
+	exclude_hbox.add_theme_constant_override("separation", 8)
+	vbox.add_child(exclude_hbox)
+
+	var exclude_label := Label.new()
+	exclude_label.text = "Exclude Addons:"
+	exclude_hbox.add_child(exclude_label)
+
+	controls.excluded_addons_edit = LineEdit.new()
+	controls.excluded_addons_edit.placeholder_text = "addon1, addon2  (empty = exclude none)"
+	controls.excluded_addons_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	controls.excluded_addons_edit.tooltip_text = "Skip these addon folders (comma-separated). Applies when Include Addons is empty and 'Scan addons/' is enabled."
+	exclude_hbox.add_child(controls.excluded_addons_edit)
+
+	controls.excluded_addons_reset_btn = Button.new()
+	controls.excluded_addons_reset_btn.icon = _reset_icon
+	controls.excluded_addons_reset_btn.flat = true
+	controls.excluded_addons_reset_btn.tooltip_text = "Clear (exclude no addons)"
+	controls.excluded_addons_reset_btn.custom_minimum_size = Vector2(16, 16)
+	exclude_hbox.add_child(controls.excluded_addons_reset_btn)
+
 	return card
 
 

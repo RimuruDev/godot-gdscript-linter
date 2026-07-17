@@ -48,6 +48,13 @@ extends Resource
 @export var scan_target_path: String = "res://"  # Root file or directory to analyze
 @export var respect_ignore_directives: bool = true  # Process gdlint:ignore comments (false = show all issues)
 
+# Per-addon scoping (addon folder names, not full paths)
+# Precedence: included_addons non-empty → scan ONLY those addons (overrides scan_addons)
+#             included_addons empty + scan_addons on → all addons except excluded_addons
+#             included_addons empty + scan_addons off → no addons (default)
+@export var included_addons: Array[String] = []
+@export var excluded_addons: Array[String] = []
+
 # Complexity thresholds
 @export var cyclomatic_warning: int = 10
 @export var cyclomatic_critical: int = 15
@@ -196,6 +203,24 @@ func _apply_exclude_value(key: String, value: String) -> void:
 				excluded_paths.append(trimmed)
 
 
+static func get_addon_name(path: String) -> String:
+	var normalized := path.replace("\\", "/")
+	var idx := normalized.find("addons/")
+	if idx < 0:
+		return ""
+	var after := normalized.substr(idx + "addons/".length())
+	var slash := after.find("/")
+	return after.substr(0, slash) if slash >= 0 else after
+
+
+func _is_addon_scanned(path: String) -> bool:
+	if not included_addons.is_empty():
+		return included_addons.has(get_addon_name(path))
+	if scan_addons:
+		return not excluded_addons.has(get_addon_name(path))
+	return false
+
+
 func is_path_excluded(path: String) -> bool:
 	for excluded in excluded_paths:
 		# Skip addons/ exclusion if scan_addons is enabled
@@ -275,6 +300,8 @@ func save_to_json(path: String) -> bool:
 			"scan_addons": scan_addons,
 			"scan_target_path": scan_target_path,
 			"respect_ignore_directives": respect_ignore_directives,
+			"included_addons": included_addons,
+			"excluded_addons": excluded_addons,
 		},
 		"exclude": {
 			"paths": excluded_paths,
@@ -368,6 +395,14 @@ func load_from_json(path: String) -> bool:
 		if scanning.has("scan_addons"): scan_addons = bool(scanning.scan_addons)
 		if scanning.has("scan_target_path"): scan_target_path = _normalize_scan_target_path(str(scanning.scan_target_path))
 		if scanning.has("respect_ignore_directives"): respect_ignore_directives = bool(scanning.respect_ignore_directives)
+		if scanning.has("included_addons") and scanning.included_addons is Array:
+			included_addons.clear()
+			for a in scanning.included_addons:
+				included_addons.append(str(a))
+		if scanning.has("excluded_addons") and scanning.excluded_addons is Array:
+			excluded_addons.clear()
+			for a in scanning.excluded_addons:
+				excluded_addons.append(str(a))
 
 	# Apply excluded paths
 	if data.has("exclude"):
